@@ -1,72 +1,101 @@
 import React, { useEffect, useState } from 'react';
 import api from './services/api';
+import FormularioIngreso from './components/FormularioIngreso';
+import DashboardView from './components/DashboardView';
 
 function App() {
   const [reporte, setReporte] = useState(null);
-  const [error, setError] = useState(null);
+  const [cargando, setCargando] = useState(false);
+  const [mensaje, setMensaje] = useState(null);
+  const [form, setForm] = useState({ 
+  nombre: '', 
+  categoria: 'Sandwich', 
+  tamano: 'Mediano',
+  esEntero: 'Si',
+  stockTrozos: 1,
+  fechaElaboracion: new Date().toISOString().split('T')[0],
+  fechaLlegada: new Date().toISOString().split('T')[0]
+});
+
+  const fetchReporte = async () => {
+    try {
+      const res = await api.get('/productos/reporte/jerarquico-completo');
+      setReporte(res.data);
+    } catch (err) {
+      console.error("Error backend:", err);
+    }
+  };
 
   useEffect(() => {
-    const fetchReporte = async () => {
-      try {
-        const res = await api.get('/productos/reporte/jerarquico-completo');
-        setReporte(res.data);
-      } catch (err) {
-        setError("¿Encendiste el Backend en IntelliJ?");
-        console.error(err);
-      }
-    };
     fetchReporte();
   }, []);
 
+  const handleIngreso = async (e) => {
+    e.preventDefault();
+    setCargando(true);
+    setMensaje(null);
+    
+    try {
+      const productoData = {
+      nombre: form.nombre,
+      categoria: form.categoria,
+      tamano: form.tamano,
+      esEntero: form.esEntero,
+      stockTrozos: form.stockTrozos,
+      fechaElaboracion: form.fechaElaboracion,
+      fechaLlegada: form.fechaLlegada
+    };
+      await api.post('/productos', productoData, {
+      params: { 
+        cantidad: form.cantidad
+      }
+    });
+
+    setMensaje({ texto: `¡Éxito! Se ingresaron ${form.cantidad} unidades.`, tipo: "success" });
+    
+    setForm({ 
+      ...form,
+      nombre: '', 
+      cantidad: 1 
+    });
+
+    fetchReporte();
+  } catch (err) {
+    console.error(err);
+    setMensaje({ texto: "Error al guardar. Revisa que el Backend esté corriendo.", tipo: "error" });
+  } finally {
+    setCargando(false);
+    setTimeout(() => setMensaje(null), 5000);
+  }
+};
+
   return (
-    <div className="min-h-screen bg-slate-50 p-8 font-sans">
-      <header className="max-w-4xl mx-auto mb-10 text-center">
-        <h1 className="text-4xl font-black text-slate-800 tracking-tight">
-          MERCADITO <span className="text-pink-500">DULCINEA</span>
-        </h1>
-        <p className="text-slate-500 mt-2 font-medium">Panel de Control de Inventario</p>
-      </header>
-
-      <main className="max-w-4xl mx-auto">
-        {error && (
-          <div className="bg-red-100 border-l-4 border-red-500 p-4 mb-6 text-red-700">
-            {error}
+    <div className="min-h-screen pb-20">
+      <nav className="bg-white border-b border-slate-100 p-6 mb-10 shadow-sm">
+        <div className="max-w-5xl mx-auto flex justify-between items-center">
+          <h1 className="text-2xl font-black tracking-tighter text-slate-800">
+            DULCINEA <span className="text-pink-500">POS</span>
+          </h1>
+          <div className="px-4 py-1 bg-green-50 rounded-full border border-green-100">
+            <span className="text-[10px] font-black text-green-600 uppercase">Sistema Online</span>
           </div>
-        )}
+        </div>
+      </nav>
 
-        {reporte ? (
-          <div className="grid gap-6">
-            {/* Tarjeta de Total General */}
-            <div className="bg-white p-6 rounded-3xl shadow-sm border border-slate-200 flex justify-between items-center">
-              <h2 className="text-xl font-bold text-slate-700">Stock Total en Sistema</h2>
-              <span className="text-4xl font-black text-pink-500">{reporte.totalGeneral}</span>
-            </div>
-
-            {/* Listado por Categorías */}
-            <div className="grid md:grid-cols-2 gap-6">
-              {Object.entries(reporte.detallePorCategoria).map(([nombreCat, detalle]) => (
-                <div key={nombreCat} className="bg-white p-6 rounded-3xl shadow-sm border border-slate-100">
-                  <div className="flex justify-between items-center mb-4 border-b pb-2">
-                    <h3 className="text-lg font-bold text-slate-800 uppercase tracking-wider">{nombreCat}</h3>
-                    <span className="bg-pink-100 text-pink-600 px-3 py-1 rounded-full text-sm font-bold">
-                      {detalle.totalCategoria} unidades
-                    </span>
-                  </div>
-                  <ul className="space-y-3">
-                    {Object.entries(detalle.productos).map(([prod, cant]) => (
-                      <li key={prod} className="flex justify-between text-slate-600 italic">
-                        <span>{prod}</span>
-                        <span className="font-semibold text-slate-800">{cant}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
-              ))}
-            </div>
-          </div>
-        ) : (
-          <p className="text-center text-slate-400 animate-pulse">Cargando datos del Mercadito...</p>
-        )}
+      <main className="max-w-5xl mx-auto px-4 grid md:grid-cols-3 gap-8 items-start">
+        <div className="md:col-span-1">
+          <FormularioIngreso 
+            form={form} 
+            setForm={setForm} 
+            onSubmit={handleIngreso} 
+            mensaje={mensaje}
+            cargando={cargando}
+          />
+        </div>
+        
+        <div className="md:col-span-2">
+           <DashboardView reporte={reporte} />
+        </div>
       </main>
     </div>
   );
