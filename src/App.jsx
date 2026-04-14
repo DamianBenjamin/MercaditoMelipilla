@@ -74,7 +74,7 @@ function App() {
       <nav className="bg-white border-b border-slate-100 p-6 mb-10 shadow-sm">
         <div className="max-w-5xl mx-auto flex justify-between items-center">
           <h1 className="text-2xl font-black tracking-tighter text-slate-800">
-            DULCINEA <span className="text-pink-500">POS</span>
+            MERCADITO <span className="text-pink-500">DULCINEA</span>
           </h1>
           <div className="px-4 py-1 bg-green-50 rounded-full border border-green-100">
             <span className="text-[10px] font-black text-green-600 uppercase">Sistema Online</span>
