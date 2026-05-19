@@ -12,7 +12,7 @@ const FormularioIngreso = ({ form, setForm, onSubmit, mensaje, cargando }) => {
       </div>
 
       <form onSubmit={onSubmit} className="space-y-4">
-        {/* Categoría y Nombre */}
+        {/* Categoría y Tamaño */}
         <div className="grid grid-cols-2 gap-3">
           <div>
             <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Categoría</label>
@@ -38,6 +38,7 @@ const FormularioIngreso = ({ form, setForm, onSubmit, mensaje, cargando }) => {
           </div>
         </div>
 
+        {/* Nombre */}
         <div>
           <label className="block text-[10px] font-black text-slate-400 uppercase mb-1 ml-1">Nombre</label>
           <input 
@@ -50,53 +51,26 @@ const FormularioIngreso = ({ form, setForm, onSubmit, mensaje, cargando }) => {
           />
         </div>
 
-        {/* Sección dinámica de Formato y Cantidad */}
-<div className="grid grid-cols-2 gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100">
-  <div>
-    <label className="block text-[10px] font-black text-slate-400 uppercase mb-1">Formato</label>
-    <select 
-      /* BLOQUEO DINÁMICO: Si es Sandwich, se deshabilita */
-      disabled={form.categoria === "Sandwich"}
-      /* VALOR DINÁMICO: Si es Sandwich, siempre muestra "Si" */
-      value={form.categoria === "Sandwich" ? "Si" : form.esEntero}
-      onChange={(e) => setForm({...form, esEntero: e.target.value})}
-      className={`w-full bg-transparent font-bold text-sm outline-none ${
-        form.categoria === "Sandwich" ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-      }`}
-    >
-      <option value="Si">🎂 Entero</option>
-      <option value="No">🍰 Trozos</option>
-    </select>
-  </div>
-
-  <div>
-    <label className="block text-[10px] font-black text-pink-500 uppercase mb-1 transition-all">
-      
-      {(form.categoria === "Sandwich" || form.esEntero === "Si") 
-        ? "Total a Agregar" 
-        : "Trozos por Unidad"}
-    </label>
-    <input 
-      type="number" 
-      min="1"
-      className="w-full bg-transparent font-bold text-sm outline-none border-b border-transparent focus:border-pink-300 transition-all"
-
-      /* Si es Sandwich o Entero, el valor viene de 'cantidad' */
-      value={(form.categoria === "Sandwich" || form.esEntero === "Si") 
-        ? form.cantidad 
-        : form.stockTrozos}
-      onChange={(e) => {
-        const val = parseInt(e.target.value) || 1;
-        /* Si es Sandwich o Entero, guardamos en 'cantidad' */
-        if (form.categoria === "Sandwich" || form.esEntero === "Si") {
-          setForm({...form, cantidad: val, esEntero: "Si"});
-        } else {
-          setForm({...form, stockTrozos: val});
-        }
-      }}
-    />
-  </div>
-</div>
+        {/* Sección de Cantidad a Agregar (Limpia y simplificada) */}
+        <div className="p-3 bg-slate-50 rounded-2xl border border-slate-100">
+          <div>
+            <label className="block text-[10px] font-black text-pink-500 uppercase mb-1 transition-all">
+              Cantidad a Agregar
+            </label>
+            <input 
+              type="number" 
+              min="1"
+              className="w-full bg-transparent font-bold text-sm outline-none border-b border-transparent focus:border-pink-300 transition-all"
+              placeholder="Ej: 5"
+              value={form.cantidad}
+              onChange={(e) => {
+                const val = parseInt(e.target.value) || 1;
+                setForm({...form, cantidad: val});
+              }}
+              required
+            />
+          </div>
+        </div>
 
         {/* Fechas */}
         <div className="grid grid-cols-2 gap-3">

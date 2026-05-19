@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock } from 'lucide-react';
+import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2 } from 'lucide-react';
 import api from '../services/api';
 import NotasInventario from './NotasInventario';
 
@@ -12,7 +12,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
   const obtenerDiasTranscurridos = (fechaElab) => {
     if (!fechaElab) return { texto: "Sin fecha", dias: 0 };
 
-    // Soporta formatos AAAA-MM-DD (guiones) o DD/MM/AAAA (slashes)
     let anio, mes, dia;
     if (fechaElab.includes('-')) {
       [anio, mes, dia] = fechaElab.split('-');
@@ -25,7 +24,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
     const fechaProd = new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
     const fechaHoy = new Date();
 
-    // Limpiamos las horas para un cálculo exacto de días calendario
     fechaProd.setHours(0, 0, 0, 0);
     fechaHoy.setHours(0, 0, 0, 0);
 
@@ -36,6 +34,43 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
     if (dias === 0) return { texto: "Elaborado Hoy", dias: 0 };
     if (dias === 1) return { texto: "Lleva 1 Día", dias: 1 };
     return { texto: `Lleva ${dias} Días`, dias };
+  };
+
+  // NUEVA FUNCIÓN INTERNA PARA MODIFICAR EL NÚMERO DE TROZOS EXACTO
+  const ajustarCantidadTrozos = async (item, nombreProducto) => {
+    const nuevoStockStr = window.prompt(`¿Cuántas porciones quedan actualmente de este lote? (Stock actual: ${item.stockTrozos}):`);
+    
+    if (nuevoStockStr === null) return; // Si cancela, no hace nada
+
+    const nuevoStock = parseInt(nuevoStockStr);
+    if (isNaN(nuevoStock) || nuevoStock < 0) {
+      alert("Por favor, ingresa una cantidad válida (0 o superior).");
+      return;
+    }
+
+    try {
+      // Reutilizamos tu endpoint @PutMapping("/{id}") enviando el objeto con el stock actualizado
+      const productoActualizado = {
+        ...item,
+        stockTrozos: nuevoStock
+      };
+
+      await api.put(`/productos/${item.id}`, productoActualizado);
+
+      // Actualizamos el estado de "detalles" localmente para que cambie en pantalla al segundo
+      setDetalles(prev => {
+        const lotesActuales = prev[nombreProducto] || [];
+        const lotesModificados = lotesActuales.map(lote => 
+          lote.id === item.id ? { ...lote, stockTrozos: nuevoStock } : lote
+        );
+        return { ...prev, [nombreProducto]: lotesModificados };
+      });
+
+      alert("¡Cantidad de trozos actualizada con éxito!");
+    } catch (err) {
+      console.error("Error al actualizar trozos:", err);
+      alert("No se pudo actualizar la cantidad en el servidor.");
+    }
   };
 
   const toggleExpandir = async (nombreProducto) => {
@@ -118,10 +153,8 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
                         <p className="text-[10px] text-center text-slate-400 uppercase font-black animate-pulse py-4">Cargando lotes...</p>
                       ) : (
                         detalles[nombreProducto]?.map((item) => {
-                          // CALCULAMOS LA ANTIGÜEDAD DE ESTE LOTE
                           const infoTiempo = obtenerDiasTranscurridos(item.fechaElaboracion);
                           
-                          // DETERMINAMOS EL COLOR SEGÚN LOS DÍAS
                           let colorAlerta = "bg-slate-50 text-slate-500 border-slate-200";
                           if (infoTiempo.dias >= 4) {
                             colorAlerta = "bg-red-50 text-red-700 border-red-200 animate-pulse font-extrabold";
@@ -139,26 +172,57 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
                                     <span className="text-slate-800">{item.fechaElaboracion}</span>
                                   </div>
                                   
-                                  {/* INDICADOR VISUAL DE DÍAS TRANSCURRIDOS */}
                                   <div className={`flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-md border uppercase tracking-wider ${colorAlerta}`}>
                                     <Clock size={10} />
                                     {infoTiempo.texto}
                                   </div>
                                 </div>
+                                
                                 <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
                                   <Truck size={14} className="text-blue-400 flex-shrink-0" />
                                   <span className="text-slate-400 w-8">Lleg:</span> 
                                   <span className="text-slate-800">{item.fechaLlegada}</span>
                                 </div>
+
+                                {/* CONTADOR DE PORCIONES + BOTÓN PARA EDITAR NUMERO EXACTO */}
+                                {item.esEntero?.toLowerCase() === 'no' && (
+                                  <div className="mt-2 flex items-center justify-between bg-pink-50/60 border border-pink-100 px-3 py-2 rounded-xl shadow-inner">
+                                    <div className="text-[10px] font-black text-pink-600 uppercase flex items-center gap-1.5">
+                                      <span>Porciones Quedan:</span>
+                                      <span className="text-xs bg-white text-slate-800 px-2 py-0.5 rounded-md border border-pink-200 font-mono shadow-sm font-bold">
+                                        {item.stockTrozos}
+                                      </span>
+                                    </div>
+                                    
+                                    {/* BOTÓN CON CORRECCIÓN PARA ASIGNAR UN NÚMERO DIRECTO */}
+                                    <button
+                                      onClick={(e) => { e.stopPropagation(); ajustarCantidadTrozos(item, nombreProducto); }}
+                                      className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
+                                      title="Cambiar stock de porciones"
+                                    >
+                                      <Edit2 size={10} />
+                                      Modificar
+                                    </button>
+                                  </div>
+                                )}
                               </div>
+
                               <div className="flex items-center justify-between border-t border-slate-50 pt-3 mt-1">
                                 <span className="text-[9px] text-slate-400 font-mono bg-slate-50 px-2 py-0.5 rounded">ID: {item.id}</span>
-                                <div className="flex gap-2">
-                                  {cat.toLowerCase().includes('pasteleria') && item.esEntero === 'si' && (
-                                    <button onClick={(e) => { e.stopPropagation(); onTrozar(item.id); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors">
+                                <div className="flex gap-2 items-center">
+                                  
+                                  {/* BOTÓN TROZAR ORIGINAL */}
+                                  {!cat.toLowerCase().includes('sandwich') && item.esEntero?.toLowerCase() === 'si' && (
+                                    <button 
+                                      onClick={(e) => { e.stopPropagation(); onTrozar(item.id); }} 
+                                      className="p-2 text-blue-500 hover:bg-blue-50 border border-blue-100 rounded-xl transition-colors flex items-center gap-1 shadow-sm font-bold"
+                                      title="Trozar Producto"
+                                    >
                                       <Scissors size={14} />
+                                      <span className="text-[9px] font-black uppercase tracking-wider">Trozar</span>
                                     </button>
                                   )}
+                                  
                                   <button onClick={(e) => { e.stopPropagation(); onEliminar(nombreProducto, cat, item.id); }} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
                                     <Trash2 size={14} />
                                   </button>
