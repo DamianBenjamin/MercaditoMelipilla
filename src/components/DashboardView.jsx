@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Edit3, Truck } from 'lucide-react';
+import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock } from 'lucide-react';
 import api from '../services/api';
 import NotasInventario from './NotasInventario';
 
@@ -7,6 +7,36 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
   const [expandidos, setExpandidos] = useState({});
   const [detalles, setDetalles] = useState({});
   const [cargandoDetalle, setCargandoDetalle] = useState({});
+
+  // FUNCIÓN PARA CALCULAR LOS DÍAS TRANSCURRIDOS DESDE LA ELABORACIÓN
+  const obtenerDiasTranscurridos = (fechaElab) => {
+    if (!fechaElab) return { texto: "Sin fecha", dias: 0 };
+
+    // Soporta formatos AAAA-MM-DD (guiones) o DD/MM/AAAA (slashes)
+    let anio, mes, dia;
+    if (fechaElab.includes('-')) {
+      [anio, mes, dia] = fechaElab.split('-');
+    } else if (fechaElab.includes('/')) {
+      [dia, mes, anio] = fechaElab.split('/');
+    } else {
+      return { texto: fechaElab, dias: 0 };
+    }
+
+    const fechaProd = new Date(parseInt(anio), parseInt(mes) - 1, parseInt(dia));
+    const fechaHoy = new Date();
+
+    // Limpiamos las horas para un cálculo exacto de días calendario
+    fechaProd.setHours(0, 0, 0, 0);
+    fechaHoy.setHours(0, 0, 0, 0);
+
+    const diferenciaMilisegundos = fechaHoy - fechaProd;
+    const dias = Math.floor(diferenciaMilisegundos / (1000 * 60 * 60 * 24));
+
+    if (dias < 0) return { texto: "Fecha Futura", dias: 0 };
+    if (dias === 0) return { texto: "Elaborado Hoy", dias: 0 };
+    if (dias === 1) return { texto: "Lleva 1 Día", dias: 1 };
+    return { texto: `Lleva ${dias} Días`, dias };
+  };
 
   const toggleExpandir = async (nombreProducto) => {
     const estaAbierto = !!expandidos[nombreProducto];
@@ -35,7 +65,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
 
   return (
     <div className="space-y-8">
-      {/* Stock Global - Ahora más elegante */}
+      {/* Stock Global */}
       <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 p-8 rounded-[2rem] shadow-sm">
         <div className="flex justify-between items-center">
           <div>
@@ -48,10 +78,9 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
         </div>
       </div>
 
-      {/* REJILLA MEJORADA: Más espacio entre columnas (gap-8) */}
+      {/* REJILLA CATEGORÍAS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
         
-        {/* Renderizado de Categorías */}
         {Object.entries(reporte.detallePorCategoria).map(([cat, info]) => (
           <div key={cat} className="bg-white p-7 rounded-[2rem] border border-slate-100 shadow-sm flex flex-col h-fit">
             <div className="flex justify-between items-center mb-8">
@@ -88,35 +117,56 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
                       {cargandoDetalle[nombreProducto] ? (
                         <p className="text-[10px] text-center text-slate-400 uppercase font-black animate-pulse py-4">Cargando lotes...</p>
                       ) : (
-                        detalles[nombreProducto]?.map((item) => (
-                          <div key={item.id} className="flex flex-col gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                            <div className="space-y-2">
-                              <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
-                                <Calendar size={14} className="text-pink-400 flex-shrink-0" />
-                                <span className="text-slate-400 w-8">Elab:</span> 
-                                <span className="text-slate-800">{item.fechaElaboracion}</span>
+                        detalles[nombreProducto]?.map((item) => {
+                          // CALCULAMOS LA ANTIGÜEDAD DE ESTE LOTE
+                          const infoTiempo = obtenerDiasTranscurridos(item.fechaElaboracion);
+                          
+                          // DETERMINAMOS EL COLOR SEGÚN LOS DÍAS
+                          let colorAlerta = "bg-slate-50 text-slate-500 border-slate-200";
+                          if (infoTiempo.dias >= 4) {
+                            colorAlerta = "bg-red-50 text-red-700 border-red-200 animate-pulse font-extrabold";
+                          } else if (infoTiempo.dias >= 2) {
+                            colorAlerta = "bg-amber-50 text-amber-800 border-amber-200";
+                          }
+
+                          return (
+                            <div key={item.id} className="flex flex-col gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
+                                    <Calendar size={14} className="text-pink-400 flex-shrink-0" />
+                                    <span className="text-slate-400 w-8">Elab:</span> 
+                                    <span className="text-slate-800">{item.fechaElaboracion}</span>
+                                  </div>
+                                  
+                                  {/* INDICADOR VISUAL DE DÍAS TRANSCURRIDOS */}
+                                  <div className={`flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-md border uppercase tracking-wider ${colorAlerta}`}>
+                                    <Clock size={10} />
+                                    {infoTiempo.texto}
+                                  </div>
+                                </div>
+                                <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
+                                  <Truck size={14} className="text-blue-400 flex-shrink-0" />
+                                  <span className="text-slate-400 w-8">Lleg:</span> 
+                                  <span className="text-slate-800">{item.fechaLlegada}</span>
+                                </div>
                               </div>
-                              <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
-                                <Truck size={14} className="text-blue-400 flex-shrink-0" />
-                                <span className="text-slate-400 w-8">Lleg:</span> 
-                                <span className="text-slate-800">{item.fechaLlegada}</span>
-                              </div>
-                            </div>
-                            <div className="flex items-center justify-between border-t border-slate-50 pt-3 mt-1">
-                              <span className="text-[9px] text-slate-400 font-mono bg-slate-50 px-2 py-0.5 rounded">ID: {item.id}</span>
-                              <div className="flex gap-2">
-                                {cat.toLowerCase().includes('pasteleria') && item.esEntero === 'si' && (
-                                  <button onClick={(e) => { e.stopPropagation(); onTrozar(item.id); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors">
-                                    <Scissors size={14} />
+                              <div className="flex items-center justify-between border-t border-slate-50 pt-3 mt-1">
+                                <span className="text-[9px] text-slate-400 font-mono bg-slate-50 px-2 py-0.5 rounded">ID: {item.id}</span>
+                                <div className="flex gap-2">
+                                  {cat.toLowerCase().includes('pasteleria') && item.esEntero === 'si' && (
+                                    <button onClick={(e) => { e.stopPropagation(); onTrozar(item.id); }} className="p-2 text-blue-500 hover:bg-blue-50 rounded-xl transition-colors">
+                                      <Scissors size={14} />
+                                    </button>
+                                  )}
+                                  <button onClick={(e) => { e.stopPropagation(); onEliminar(nombreProducto, cat, item.id); }} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                                    <Trash2 size={14} />
                                   </button>
-                                )}
-                                <button onClick={(e) => { e.stopPropagation(); onEliminar(nombreProducto, cat, item.id); }} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
-                                  <Trash2 size={14} />
-                                </button>
+                                </div>
                               </div>
                             </div>
-                          </div>
-                        ))
+                          );
+                        })
                       )}
                     </div>
                   )}
