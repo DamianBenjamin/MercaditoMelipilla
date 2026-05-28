@@ -1,14 +1,18 @@
 import React, { useState } from 'react';
-import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2, Inbox } from 'lucide-react';
+import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2, Inbox, FileText, Table } from 'lucide-react';
 import api from '../services/api';
 import NotasInventario from './NotasInventario';
+
+// IMPORTAMOS LAS LIBRERÍAS DE EXPORTACIÓN
+import { jsPDF } from 'jspdf';
+import autoTable from 'jspdf-autotable';
+import * as XLSX from 'xlsx';
 
 const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
   const [expandidos, setExpandidos] = useState({});
   const [detalles, setDetalles] = useState({});
   const [cargandoDetalle, setCargandoDetalle] = useState({});
 
-  // DEFINIMOS LAS CATEGORÍAS FIJAS DEL LOCAL PARA QUE SIEMPRE SE VEAN
   const categoriasFijas = ['Sandwich', 'Pastelería'];
 
   // FUNCIÓN PARA CALCULAR LOS DÍAS TRANSCURRIDOS DESDE LA ELABORACIÓN
@@ -39,10 +43,90 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
     return { texto: `Lleva ${dias} Días`, dias };
   };
 
-  // NUEVA FUNCIÓN INTERNA PARA MODIFICAR EL NÚMERO DE TROZOS EXACTO
+  // NUEVA FUNCIÓN: EXPORTAR A EXCEL
+  const exportarExcel = () => {
+    if (!reporte || !reporte.detallePorCategoria) return;
+
+    const filas = [];
+    
+    // Aplanamos el reporte jerárquico para armar una tabla de Excel limpia
+    Object.entries(reporte.detallePorCategoria).forEach(([categoria, info]) => {
+      Object.entries(info.productos || {}).forEach(([nombreProducto, cantidad]) => {
+        filas.push({
+          'Categoría': categoria,
+          'Producto / Detalle': nombreProducto,
+          'Cantidad Total (Unidades)': cantidad
+        });
+      });
+    });
+
+    if (filas.length === 0) {
+      alert("No hay datos disponibles para exportar.");
+      return;
+    }
+
+    const hoja = XLSX.utils.json_to_sheet(filas);
+    const libro = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(libro, hoja, 'Inventario Diario');
+    
+    // Guardamos con la fecha de hoy automáticamente
+    const fechaHoy = new Date().toISOString().split('T')[0];
+    XLSX.writeFile(libro, `inventario_mercadito_${fechaHoy}.xlsx`);
+  };
+
+  // NUEVA FUNCIÓN: EXPORTAR A PDF (REPORTE FORMAL)
+  const exportarPDF = () => {
+    if (!reporte || !reporte.detallePorCategoria) return;
+
+    try {
+      // 1. Instancia fresca en cada ejecución
+      const doc = new jsPDF();
+      const fechaHoy = new Date().toISOString().split('T')[0];
+
+      // Encabezado estilizado del reporte
+      doc.setFont("helvetica", "bold");
+      doc.setFontSize(20);
+      doc.text("MERCADITO DULCINEA", 14, 20);
+      
+      doc.setFont("helvetica", "normal");
+      doc.setFontSize(10);
+      doc.text(`Reporte Diario de Inventario - Fecha: ${fechaHoy}`, 14, 28);
+      doc.text(`Stock Total General en Sistema: ${reporte.totalGeneral} unidades`, 14, 34);
+
+      const columnas = ["Categoría", "Producto / Detalle", "Cantidad"];
+      const filas = [];
+
+      Object.entries(reporte.detallePorCategoria).forEach(([categoria, info]) => {
+        Object.entries(info.productos || {}).forEach(([nombreProducto, cantidad]) => {
+          filas.push([categoria, nombreProducto, `${cantidad} Un`]);
+        });
+      });
+
+      // 2. Llamada directa y segura al plugin importado
+      if (filas.length > 0) {
+        autoTable(doc, {
+          startY: 40,
+          head: [columnas],
+          body: filas,
+          theme: 'striped',
+          headStyles: { fillColor: [244, 63, 94] }, // Color Rosa Dulcinea
+          styles: { font: "helvetica", fontSize: 10 }
+        });
+      } else {
+        doc.text("No hay productos registrados en el inventario actual.", 14, 50);
+      }
+
+      // 3. Guardado e impresión del documento
+      doc.save(`reporte_inventario_${fechaHoy}.pdf`);
+
+    } catch (error) {
+      console.error("Error al generar el PDF:", error);
+      alert("Hubo un pequeño problema al procesar el PDF. Por favor, intenta de nuevo.");
+    }
+  };
+
   const ajustarCantidadTrozos = async (item, nombreProducto) => {
     const nuevoStockStr = window.prompt(`¿Cuántas porciones quedan actualmente de este lote? (Stock actual: ${item.stockTrozos}):`);
-    
     if (nuevoStockStr === null) return;
 
     const nuevoStock = parseInt(nuevoStockStr);
@@ -62,7 +146,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
         );
         return { ...prev, [nombreProducto]: lotesModificados };
       });
-
       alert("¡Cantidad de trozos actualizada con éxito!");
     } catch (err) {
       console.error("Error al actualizar trozos:", err);
@@ -97,26 +180,42 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
 
   return (
     <div className="space-y-8">
-      {/* Stock Global */}
+      {/* Stock Global + Botones de Descarga */}
       <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 p-8 rounded-[2rem] shadow-sm">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
             <p className="text-slate-400 text-xs font-black uppercase tracking-[0.2em] mb-1">Inventario Total</p>
             <h3 className="text-7xl font-black text-slate-800 tracking-tighter">{reporte.totalGeneral}</h3>
           </div>
-          <div className="p-5 bg-white shadow-sm rounded-3xl border border-slate-100">
-            <Package size={48} className="text-pink-500" />
+          
+          {/* PANEL DE EXPORTACIÓN DIARIA */}
+          <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
+            <button
+              onClick={exportarPDF}
+              className="flex items-center gap-2 px-4 py-2.5 bg-red-50 hover:bg-red-100 text-red-600 border border-red-200 rounded-2xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+              title="Descargar Reporte en PDF"
+            >
+              <FileText size={16} />
+              Exportar PDF
+            </button>
+            <button
+              onClick={exportarExcel}
+              className="flex items-center gap-2 px-4 py-2.5 bg-green-50 hover:bg-green-100 text-green-700 border border-green-200 rounded-2xl text-xs font-black uppercase tracking-wider transition-all active:scale-95 shadow-sm"
+              title="Descargar Reporte en Excel"
+            >
+              <Table size={16} />
+              Exportar Excel
+            </button>
+            <div className="hidden sm:block p-4 bg-white shadow-sm rounded-2xl border border-slate-100">
+              <Package size={32} className="text-pink-500" />
+            </div>
           </div>
         </div>
       </div>
 
       {/* REJILLA CATEGORÍAS */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8 items-start">
-        
-        {/* MAPEAMOS LAS CATEGORÍAS FIJAS EN LUGAR DE SOLO LO QUE MANDAL EL BACKEND */}
         {categoriasFijas.map((cat) => {
-          // Buscamos si la categoría existe en el reporte del Backend
-          // Usamos una búsqueda insensible a mayúsculas/acentos por seguridad
           const llaveBackend = Object.keys(reporte.detallePorCategoria || {}).find(
             k => k.toLowerCase().trim() === cat.toLowerCase().trim()
           );
@@ -254,7 +353,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
                     </div>
                   ))
                 ) : (
-                  /* ESTADO VACÍO ELEGANTE EN CASO DE QUE LA CATEGORÍA NO TENGA STOCK */
                   <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50/50 text-slate-400">
                     <Inbox size={24} className="text-slate-300 mb-2" />
                     <p className="text-xs font-bold uppercase tracking-wider">Sin productos</p>
