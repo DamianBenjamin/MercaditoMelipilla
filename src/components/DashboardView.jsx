@@ -329,17 +329,54 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
                                       <span className="text-[9px] text-slate-400 font-mono bg-slate-50 px-2 py-0.5 rounded">ID: {item.id}</span>
                                       <div className="flex gap-2 items-center">
                                         
+                                        {/* EVENTO DE TROZADO OPTIMIZADO EN TIEMPO REAL */}
                                         {!cat.toLowerCase().includes('sandwich') && item.esEntero?.toLowerCase() === 'si' && (
                                           <button 
-                                            onClick={(e) => { e.stopPropagation(); onTrozar(item.id); }} 
+                                            onClick={async (e) => { 
+                                              e.stopPropagation(); 
+                                              
+                                              // 1. Ejecuta el trozado en App.jsx y espera la cantidad de porciones
+                                              const porcionesCreadas = await onTrozar(item.id); 
+                                              
+                                              // 2. Si se procesó con éxito, actualizamos visualmente el acordeón abierto
+                                              if (porcionesCreadas) {
+                                                setDetalles(prev => {
+                                                  const lotesActuales = prev[nombreProducto] || [];
+                                                  const lotesModificados = lotesActuales.map(lote => 
+                                                    lote.id === item.id 
+                                                      ? { ...lote, esEntero: 'no', stockTrozos: porcionesCreadas } 
+                                                      : lote
+                                                  );
+                                                  return { ...prev, [nombreProducto]: lotesModificados };
+                                                });
+                                              }
+                                            }} 
                                             className="p-2 text-blue-500 hover:bg-blue-50 border border-blue-100 rounded-xl transition-colors flex items-center gap-1 shadow-sm font-bold"
+                                            title="Trozar Producto"
                                           >
                                             <Scissors size={14} />
                                             <span className="text-[9px] font-black uppercase tracking-wider">Trozar</span>
                                           </button>
                                         )}
                                         
-                                        <button onClick={(e) => { e.stopPropagation(); onEliminar(nombreProducto, cat, item.id); }} className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors">
+                                        {/* EVENTO DE ELIMINACIÓN OPTIMIZADO PARA ACTUALIZAR EN TIEMPO REAL */}
+                                        <button 
+                                          onClick={async (e) => { 
+                                            e.stopPropagation(); 
+                                            
+                                            // 1. Guardamos la respuesta del servidor (true si aceptó, false si canceló)
+                                            const fueBorrado = await onEliminar(nombreProducto, cat, item.id); 
+                                            
+                                            // 2. SÓLO si fue borrado con éxito de Neon, lo removemos de la pantalla
+                                            if (fueBorrado) {
+                                              setDetalles(prev => {
+                                                const lotesActuales = prev[nombreProducto] || [];
+                                                return { ...prev, [nombreProducto]: lotesActuales.filter(lote => lote.id !== item.id) };
+                                              });
+                                            }
+                                          }} 
+                                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                                        >
                                           <Trash2 size={14} />
                                         </button>
                                       </div>
