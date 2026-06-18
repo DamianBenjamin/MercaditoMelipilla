@@ -26,7 +26,7 @@ const NotasInventario = () => {
 
   const fetchNotas = async () => {
     try {
-      const res = await api.get('/notas');
+      const res = await api.get('/api/notas');
       setNotas(res.data);
     } catch (err) {
       console.error("Error al cargar notas", err);
@@ -42,7 +42,7 @@ const NotasInventario = () => {
         fecha: new Date().toLocaleDateString(), 
         resuelta: false 
       };
-      await api.post('/notas', nueva);
+      await api.post('/api/notas', nueva);
       setTexto('');
       fetchNotas();
     } catch (err) {
@@ -54,7 +54,7 @@ const NotasInventario = () => {
     try {
       const notaActual = notas.find(n => n.id === id);
       const notaActualizada = { ...notaActual, prioridad: nuevaPrioridad };
-      await api.put(`/notas/${id}`, notaActualizada);
+      await api.put(`/api/notas/${id}`, notaActualizada);
       setNotas(notas.map(n => n.id === id ? notaActualizada : n));
     } catch (err) {
       console.error("Error al cambiar color:", err);
@@ -63,7 +63,7 @@ const NotasInventario = () => {
 
   const eliminarNota = async (id) => {
     try {
-      await api.delete(`/notas/${id}`);
+      await api.delete(`/api/notas/${id}`);
       fetchNotas();
     } catch (err) {
       console.error("Error al eliminar", err);

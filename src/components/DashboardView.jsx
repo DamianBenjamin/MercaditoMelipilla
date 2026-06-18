@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2, Inbox, FileText, Table, AlertTriangle, Bell} from 'lucide-react';
 import api from '../services/api';
 import NotasInventario from './NotasInventario';
@@ -8,12 +8,13 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
-const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey }) => {
+// 🔌 RECIBIMOS esSoloLectura EN LOS PROPS DEL COMPONENTE
+const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSoloLectura }) => {
   const [expandidos, setExpandidos] = useState({});
   const [detalles, setDetalles] = useState({});
   const [cargandoDetalle, setCargandoDetalle] = useState({});
 
-  React.useEffect(() => {
+  useEffect(() => {
     setDetalles({});
     setExpandidos({});
   }, [actualizarLotesKey]);
@@ -142,7 +143,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey }) =>
 
     try {
       const productoActualizado = { ...item, stockTrozos: nuevoStock };
-      await api.put(`/productos/${item.id}`, productoActualizado);
+      await api.put(`api/productos/${item.id}`, productoActualizado);
 
       setDetalles(prev => {
         const lotesActuales = prev[nombreProducto] || [];
@@ -166,7 +167,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey }) =>
       setCargandoDetalle(prev => ({ ...prev, [nombreProducto]: true }));
       try {
         const nombreLimpio = nombreProducto.includes(' (') ? nombreProducto.split(' (')[0] : nombreProducto;
-        const res = await api.get(`/productos/buscar?nombre=${nombreLimpio}`);
+        const res = await api.get(`api/productos/buscar?nombre=${nombreLimpio}`);
         setDetalles(prev => ({ ...prev, [nombreProducto]: res.data }));
       } catch (err) {
         console.error("Error al obtener detalles:", err);
@@ -364,13 +365,16 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey }) =>
                                             </span>
                                           </div>
                                           
-                                          <button
-                                            onClick={(e) => { e.stopPropagation(); ajustarCantidadTrozos(item, nombreProducto); }}
-                                            className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
-                                          >
-                                            <Edit2 size={10} />
-                                            Modificar
-                                          </button>
+                                          {/* 🛑 CONDICIONAL DE EDICIÓN DE PORCIONES */}
+                                          {!esSoloLectura && (
+                                            <button
+                                              onClick={(e) => { e.stopPropagation(); ajustarCantidadTrozos(item, nombreProducto); }}
+                                              className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-pink-100 text-pink-700 border border-pink-200 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm transition-all active:scale-95 cursor-pointer"
+                                            >
+                                              <Edit2 size={10} />
+                                              Modificar
+                                            </button>
+                                          )}
                                         </div>
                                       )}
                                     </div>
@@ -379,16 +383,12 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey }) =>
                                       <span className="text-[9px] text-slate-400 font-mono bg-slate-50 px-2 py-0.5 rounded">ID: {item.id}</span>
                                       <div className="flex gap-2 items-center">
                                         
-                                        {/* EVENTO DE TROZADO OPTIMIZADO EN TIEMPO REAL */}
-                                        {!cat.toLowerCase().includes('sandwich') && item.esEntero?.toLowerCase() === 'si' && (
+                                        {/* 🛑 EVENTO DE TROZADO CONDICIONAL */}
+                                        {!esSoloLectura && !cat.toLowerCase().includes('sandwich') && item.esEntero?.toLowerCase() === 'si' && (
                                           <button 
                                             onClick={async (e) => { 
                                               e.stopPropagation(); 
-                                              
-                                              // 1. Ejecuta el trozado en App.jsx y espera la cantidad de porciones
                                               const porcionesCreadas = await onTrozar(item.id); 
-                                              
-                                              // 2. Si se procesó con éxito, actualizamos visualmente el acordeón abierto
                                               if (porcionesCreadas) {
                                                 setDetalles(prev => {
                                                   const lotesActuales = prev[nombreProducto] || [];
@@ -409,26 +409,24 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey }) =>
                                           </button>
                                         )}
                                         
-                                        {/* EVENTO DE ELIMINACIÓN OPTIMIZADO PARA ACTUALIZAR EN TIEMPO REAL */}
-                                        <button 
-                                          onClick={async (e) => { 
-                                            e.stopPropagation(); 
-                                            
-                                            // 1. Guardamos la respuesta del servidor (true si aceptó, false si canceló)
-                                            const fueBorrado = await onEliminar(nombreProducto, cat, item.id); 
-                                            
-                                            // 2. SÓLO si fue borrado con éxito de Neon, lo removemos de la pantalla
-                                            if (fueBorrado) {
-                                              setDetalles(prev => {
-                                                const lotesActuales = prev[nombreProducto] || [];
-                                                return { ...prev, [nombreProducto]: lotesActuales.filter(lote => lote.id !== item.id) };
-                                              });
-                                            }
-                                          }} 
-                                          className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
-                                        >
-                                          <Trash2 size={14} />
-                                        </button>
+                                        {/* 🛑 EVENTO DE ELIMINACIÓN CONDICIONAL */}
+                                        {!esSoloLectura && (
+                                          <button 
+                                            onClick={async (e) => { 
+                                              e.stopPropagation(); 
+                                              const fueBorrado = await onEliminar(nombreProducto, cat, item.id); 
+                                              if (fueBorrado) {
+                                                setDetalles(prev => {
+                                                  const lotesActuales = prev[nombreProducto] || [];
+                                                  return { ...prev, [nombreProducto]: lotesActuales.filter(lote => lote.id !== item.id) };
+                                                });
+                                              }
+                                            }} 
+                                            className="p-2 text-slate-300 hover:text-red-500 hover:bg-red-50 rounded-xl transition-colors"
+                                          >
+                                            <Trash2 size={14} />
+                                          </button>
+                                        )}
                                       </div>
                                     </div>
                                   </div>
