@@ -7,6 +7,10 @@ function App() {
   const [reporte, setReporte] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
+  
+  // Agregamos un disparador para avisar al Dashboard que limpie la caché de lotes abiertos
+  const [actualizarLotesKey, setActualizarLotesKey] = useState(0);
+
   const [form, setForm] = useState({ 
     nombre: '', 
     categoria: 'Sandwich', 
@@ -50,8 +54,18 @@ function App() {
       });
 
       setMensaje({ texto: `¡Éxito! Se ingresaron ${form.cantidad} unidades.`, tipo: "success" });
+      
+      // Guardamos el nombre ingresado para limpiar su caché de detalles antes de resetear el input
+      const nombreIngresado = form.nombre;
+
       setForm({ ...form, nombre: '', cantidad: 1 });
+      
+      // 1. Actualizamos el conteo jerárquico global y las alertas
       await fetchReporte();
+      
+      // 2. Rompemos la caché del desglose para forzar a los acordeones a recargar el lote de Neon
+      setActualizarLotesKey(prev => prev + 1);
+
     } catch (err) {
       console.error(err);
       setMensaje({ texto: "Error al guardar. Revisa el Backend.", tipo: "error" });
@@ -70,7 +84,6 @@ function App() {
       ? `¿Deseas eliminar este lote específico de "${nombreLimpio}"?`
       : `¿Deseas eliminar una unidad de "${nombreLimpio}"?`;
 
-    // Si el usuario cancela, devolvemos false
     if (!window.confirm(mensajeConfirmar)) return false; 
 
     try {
@@ -85,11 +98,11 @@ function App() {
       
       await fetchReporte(); 
       setMensaje({ texto: "Inventario actualizado correctamente.", tipo: "success" });
-      return true; // <-- ¡CLAVE! Indicamos que sí se borró con éxito
+      return true; 
     } catch (err) {
       console.error("Error al eliminar:", err);
       setMensaje({ texto: "No se pudo eliminar el registro.", tipo: "error" });
-      return false; // <-- Indicamos que hubo un fallo
+      return false; 
     } finally {
       setTimeout(() => setMensaje(null), 4000);
     }
@@ -98,7 +111,7 @@ function App() {
   const handleTrozar = async (id) => {
     const cantidadIngresada = window.prompt("¿En cuántas porciones se dividirá este pastel? (Ej: 10, 12, 15):");
     
-    if (cantidadIngresada === null) return false; // Si cancela, devuelve false
+    if (cantidadIngresada === null) return false; 
 
     const totalTrozos = parseInt(cantidadIngresada);
     if (isNaN(totalTrozos) || totalTrozos <= 0) {
@@ -114,13 +127,12 @@ function App() {
       await fetchReporte();
       setMensaje({ texto: `¡Producto trozado en ${totalTrozos} porciones con éxito!`, tipo: "success" });
       
-      return totalTrozos; // Devolvemos el número de trozos al frontend
+      return totalTrozos; 
     } catch (err) {
       console.error("Error al trozar:", err);
       setMensaje({ texto: "No se pudo procesar el trozado. Revisa los requisitos del producto.", tipo: "error" });
       return false;
     } finally {
-      // Este bloque SE EJECUTA SIEMPRE para limpiar el cartel después de 4 segundos
       setTimeout(() => setMensaje(null), 4000);
     }
   };
@@ -152,7 +164,7 @@ function App() {
              reporte={reporte} 
              onEliminar={handleEliminar}
              onTrozar={handleTrozar}
-             setDetallesGlobal={setReporte} // Auxiliar para sincronización
+             actualizarLotesKey={actualizarLotesKey} // Pass del disparador de sincronización
            />
         </div>
       </main>

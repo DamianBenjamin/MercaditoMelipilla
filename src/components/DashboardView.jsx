@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2, Inbox, FileText, Table } from 'lucide-react';
+import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2, Inbox, FileText, Table, AlertTriangle, Bell} from 'lucide-react';
 import api from '../services/api';
 import NotasInventario from './NotasInventario';
 
@@ -8,10 +8,15 @@ import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import * as XLSX from 'xlsx';
 
-const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
+const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey }) => {
   const [expandidos, setExpandidos] = useState({});
   const [detalles, setDetalles] = useState({});
   const [cargandoDetalle, setCargandoDetalle] = useState({});
+
+  React.useEffect(() => {
+    setDetalles({});
+    setExpandidos({});
+  }, [actualizarLotesKey]);
 
   const categoriasFijas = ['Sandwich', 'Pastelería'];
 
@@ -51,11 +56,11 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
     
     // Aplanamos el reporte jerárquico para armar una tabla de Excel limpia
     Object.entries(reporte.detallePorCategoria).forEach(([categoria, info]) => {
-      Object.entries(info.productos || {}).forEach(([nombreProducto, cantidad]) => {
+      Object.entries(info.productos || {}).forEach(([nombreProducto, quantity]) => {
         filas.push({
           'Categoría': categoria,
           'Producto / Detalle': nombreProducto,
-          'Cantidad Total (Unidades)': cantidad
+          'Cantidad Total (Unidades)': quantity
         });
       });
     });
@@ -97,8 +102,8 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
       const filas = [];
 
       Object.entries(reporte.detallePorCategoria).forEach(([categoria, info]) => {
-        Object.entries(info.productos || {}).forEach(([nombreProducto, cantidad]) => {
-          filas.push([categoria, nombreProducto, `${cantidad} Un`]);
+        Object.entries(info.productos || {}).forEach(([nombreProducto, quantity]) => {
+          filas.push([categoria, nombreProducto, `${quantity} Un`]);
         });
       });
 
@@ -180,6 +185,51 @@ const DashboardView = ({ reporte, onEliminar, onTrozar }) => {
 
   return (
     <div className="space-y-8">
+      
+      {/* 🔔 BANNERS DE ALERTAS Y NOTIFICACIONES DE STOCK BAJO (≤ 2 UNIDADES) */}
+      {reporte.alertasStock && reporte.alertasStock.length > 0 && (
+        <div className="bg-amber-50 border border-amber-200 p-6 rounded-[2rem] shadow-sm">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="p-2 bg-amber-500 text-white rounded-xl shadow-md shadow-amber-500/20">
+              <Bell size={20} className="animate-bounce" />
+            </div>
+            <div>
+              <h4 className="text-amber-800 font-black uppercase text-xs tracking-widest">Alertas de Reposición Urgente</h4>
+              <p className="text-[10px] text-amber-600 font-medium">Los siguientes productos están alcanzando el límite mínimo crítico en vitrina.</p>
+            </div>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+            {reporte.alertasStock.map((alerta, index) => (
+              <div 
+                key={index} 
+                className={`flex items-center justify-between p-3.5 rounded-xl border bg-white shadow-sm transition-all hover:scale-[1.01] ${
+                  alerta.estado === 'CRÍTICO' ? 'border-red-200 bg-red-50/10' : 'border-amber-100'
+                }`}
+              >
+                <div className="flex items-center gap-2.5 overflow-hidden">
+                  <AlertTriangle size={16} className={alerta.estado === 'CRÍTICO' ? 'text-red-500' : 'text-amber-500'} />
+                  <div className="flex flex-col min-w-0">
+                    <span className="text-xs font-black text-slate-700 truncate">{alerta.productoNombre}</span>
+                    <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">
+                      {alerta.categoria.toLowerCase().includes('sandwich') ? '🥪 Sándwich' : '🍰 Pastelería'}
+                    </span>
+                  </div>
+                </div>
+                
+                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black font-mono shadow-inner border ${
+                  alerta.estado === 'CRÍTICO' 
+                    ? 'bg-red-50 text-red-700 border-red-100 animate-pulse' 
+                    : 'bg-amber-50 text-amber-700 border-amber-100'
+                }`}>
+                  {alerta.cantidadActual} {alerta.cantidadActual === 1 ? 'Unidad' : 'Unidades'}
+                </span>
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
       {/* Stock Global + Botones de Descarga */}
       <div className="bg-gradient-to-br from-white to-slate-50 border border-slate-200 p-8 rounded-[2rem] shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
