@@ -2,16 +2,17 @@ import React, { useEffect, useState } from 'react';
 import api from './services/api';
 import FormularioIngreso from './components/FormularioIngreso';
 import DashboardView from './components/DashboardView';
-import LoginView from './components/LoginView'; // IMPORTAMOS TU NUEVO LOGIN
+import LoginView from './components/LoginView';
 import { LogOut, MapPin, ShieldAlert } from 'lucide-react';
+import AdminCatalogo from './components/AdminCatalogo';
 
 function App() {
   const [reporte, setReporte] = useState(null);
   const [cargando, setCargando] = useState(false);
   const [mensaje, setMensaje] = useState(null);
   const [actualizarLotesKey, setActualizarLotesKey] = useState(0);
+  const [actualizarCatalogoKey, setActualizarCatalogoKey] = useState(0);
 
-  // ESTADOS NUEVOS PARA LA SEGURIDAD MULTI-LOCAL
   const [sesion, setSesion] = useState(null);
   const [vistaPrevia, setVistaPrevia] = useState(false);
 
@@ -24,7 +25,6 @@ function App() {
     fechaLlegada: new Date().toISOString().split('T')[0]
   });
 
-  // Cargar reporte de forma pública (funciona para todos, incluso en vista previa)
   const fetchReporte = async () => {
     try {
       const res = await api.get('/api/productos/reporte/jerarquico-completo');
@@ -34,7 +34,6 @@ function App() {
     }
   };
 
-  // Al arrancar, verificamos si ya existía una sesión guardada en el navegador
   useEffect(() => {
     const token = localStorage.getItem('token');
     const rol = localStorage.getItem('rol');
@@ -48,7 +47,7 @@ function App() {
 
   const handleLoginSuccess = (datosUsuario) => {
     setSesion(datosUsuario);
-    fetchReporte(); // Recargamos reporte con los permisos frescos
+    fetchReporte();
   };
 
   const handleCerrarSesion = () => {
@@ -164,15 +163,13 @@ function App() {
     }
   };
 
-  // Evaluamos las restricciones lógicas operacionales
   const esSoloLectura = vistaPrevia || (sesion && sesion.rol === 'ROLE_PRODUCCION');
   const mostrarFormulario = sesion && sesion.rol === 'ROLE_VENTAS';
   const mostrarBannerMonitoreo = vistaPrevia;
 
   return (
-    <div className="min-h-screen pb-20 bg-slate-50 relative">
+    <div className="min-h-screen pb-20 bg-[#F5E6D3] relative font-sans">
       
-      {/* 🔐 RENDERIZADO DEL LOGIN CONDICIONAL CON DESENFOQUE */}
       {!sesion && (
         <LoginView 
           onLoginSuccess={handleLoginSuccess} 
@@ -181,31 +178,38 @@ function App() {
         />
       )}
 
-      {/* BARRA DE NAVEGACIÓN SUPERIOR */}
-      <nav className="bg-white border-b border-slate-100 p-5 mb-10 shadow-sm">
-        <div className="max-w-[1400px] mx-auto flex flex-col sm:flex-row justify-between items-center gap-4">
-          <h1 className="text-xl font-black tracking-tighter text-slate-800">
-            MERCADITO <span className="text-pink-500">DULCINEA</span>
-          </h1>
+      {/* BARRA DE NAVEGACIÓN SUPERIOR MATIZADA */}
+      <nav className="bg-[#FAF0E6] border-b-4 border-[#3D2517] p-4 mb-10 shadow-md">
+        <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
+          
+          {/* 🎨 DISEÑO UNIFICADO AL ESTILO DE LOS FORMULARIOS */}
+          <div className="bg-[#FAF0E6] border-2 border-[#3D2517] px-6 py-2 shadow-inner text-center font-sans relative overflow-hidden flex flex-col items-center rounded-xl">
+            {/* Banner superior que imita las cintas del cartel real */}
+            <div className="flex items-center gap-2 text-xs font-black tracking-widest text-white bg-[#3D2517] px-4 py-0.5 uppercase rounded">
+              <span>—</span> MERCADITO <span>—</span>
+            </div>
+            {/* Texto principal con tipografía Sans idéntica a los formularios */}
+            <h1 className="text-2xl font-black tracking-tighter text-[#3D2517] mt-1.5 uppercase">
+              DULCINEA
+            </h1>
+          </div>
           
           <div className="flex items-center gap-3">
-            {/* Indicador de Entorno de Red Actual */}
-            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border text-[10px] font-black uppercase tracking-wider ${
+            <div className={`flex items-center gap-2 px-4 py-1.5 rounded-full border-2 text-[10px] font-black uppercase tracking-wider ${
               vistaPrevia 
-                ? 'bg-amber-50 border-amber-100 text-amber-700' 
+                ? 'bg-amber-100 border-amber-300 text-amber-900' 
                 : sesion?.rol === 'ROLE_VENTAS' 
-                  ? 'bg-green-50 border-green-100 text-green-700' 
-                  : 'bg-blue-50 border-blue-100 text-blue-700'
+                  ? 'bg-green-100 border-green-300 text-green-900' 
+                  : 'bg-[#EAD8C8] border-[#3D2517] text-[#3D2517]'
             }`}>
               <MapPin size={12} />
               {vistaPrevia ? 'Modo: Vista Previa Pública' : `Conectado: ${sesion?.nombreLocal}`}
             </div>
 
-            {/* Botón de Salida */}
             {(sesion || vistaPrevia) && (
               <button
                 onClick={handleCerrarSesion}
-                className="p-2 text-slate-400 hover:text-red-500 hover:bg-red-50 rounded-xl border border-slate-100 transition-colors"
+                className="p-2 text-[#3D2517] hover:text-white hover:bg-[#3D2517] rounded-xl border-2 border-[#3D2517] transition-all cursor-pointer shadow-sm"
                 title="Salir del Sistema"
               >
                 <LogOut size={16} />
@@ -218,35 +222,44 @@ function App() {
       {/* CUERPO PRINCIPAL DEL SISTEMA */}
       <main className="max-w-[1400px] mx-auto px-6 grid grid-cols-1 lg:grid-cols-4 gap-8 items-start">
         
-        {/* COLUMNA 1: FORMULARIO (Sólo visible para Local 2) */}
         {mostrarFormulario ? (
-          <div className="lg:col-span-1">
-            <FormularioIngreso 
-              form={form} setForm={setForm} 
-              onSubmit={handleIngreso} 
-              mensaje={mensaje} cargando={cargando}
-            />
+          <div className="lg:col-span-1 flex flex-col gap-6 items-start w-full lg:sticky lg:top-8 z-30">
+            <div className="w-full">
+              <FormularioIngreso 
+                form={form} 
+                setForm={setForm} 
+                onSubmit={handleIngreso} 
+                mensaje={mensaje} 
+                cargando={cargando}
+                actualizarCatalogoKey={actualizarCatalogoKey}
+              />
+            </div>
+            
+            <div className="w-full">
+              <AdminCatalogo 
+                onCatalogoCambiado={() => setActualizarCatalogoKey(prev => prev + 1)} 
+              />
+            </div>
           </div>
-        ) : mostrarBannerMonitoreo ? ( // 🌟 CAMBIADO AQUÍ: Ahora solo evalúa si es Vista Previa
-          <div className="lg:col-span-1 bg-white p-6 rounded-[2rem] border border-slate-100 shadow-sm text-center animate-fade-in">
-            <div className="w-10 h-10 bg-slate-50 text-slate-400 mx-auto rounded-xl flex items-center justify-center mb-3">
+        ) : mostrarBannerMonitoreo ? (
+          <div className="lg:col-span-1 bg-[#FAF0E6] p-6 rounded-[2rem] border-2 border-[#3D2517] shadow-sm text-center animate-fade-in">
+            <div className="w-10 h-10 bg-[#3D2517] text-white mx-auto rounded-xl flex items-center justify-center mb-3">
               <ShieldAlert size={20} />
             </div>
-            <h5 className="text-xs font-black text-slate-700 uppercase tracking-wider">Terminal de Monitoreo</h5>
-            <p className="text-[10px] text-slate-400 mt-2 leading-relaxed">
-              Estás en modo lectura. Desde este terminal puedes supervisar el stock, alertas críticas y coordinar mediante el muro de notas. Las acciones de venta y edición están deshabilitadas.
+            <h5 className="text-xs font-black text-[#3D2517] uppercase tracking-wider">Terminal de Monitoreo</h5>
+            <p className="text-[10px] text-[#3D2517]/70 mt-2 leading-relaxed">
+              Estás en modo lectura. Desde este terminal puedes supervisar el stock, alertas críticas y coordinar mediante el muro de notas.
             </p>
           </div>
         ) : null}
         
-        {/* COLUMNA 2: DASHBOARD GLOBAL (Ocupa las 3 columnas restantes o las 4 si el formulario se esconde) */}
-        <div className={(mostrarFormulario || esSoloLectura) ? "lg:col-span-3" : "lg:col-span-4"}>
+        <div className={(mostrarFormulario || esSoloLectura) ? "lg:col-span-3" : "lg:col-span-4"} w-full>
            <DashboardView 
              reporte={reporte} 
              onEliminar={handleEliminar}
              onTrozar={handleTrozar}
              actualizarLotesKey={actualizarLotesKey}
-             esSoloLectura={esSoloLectura} //👈 INYECTAMOS EL FILTRO AL DASHBOARD
+             esSoloLectura={esSoloLectura}
            />
         </div>
       </main>
