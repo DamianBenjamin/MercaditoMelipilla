@@ -2,7 +2,8 @@ import React, { useState, useEffect } from 'react';
 import { PlusCircle, Send, Calendar } from 'lucide-react';
 import api from '../services/api';
 
-const FormularioIngreso = ({ form, setForm, onSubmit, mensaje, cargando, actualizarCatalogoKey }) => {
+// 👇 CORRECCIÓN: Agregadas fechaMin y fechaMax como propiedades recibidas
+const FormularioIngreso = ({ form, setForm, onSubmit, mensaje, cargando, actualizarCatalogoKey, fechaMin, fechaMax }) => {
   const [sugerencias, setSugerencias] = useState([]);
   const [mostrarSugerencias, setMostrarSugerencias] = useState(false);
 
@@ -131,6 +132,8 @@ const FormularioIngreso = ({ form, setForm, onSubmit, mensaje, cargando, actuali
               className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 focus:outline-none focus:bg-white" 
               value={form.fechaElaboracion}
               onChange={(e) => setForm({...form, fechaElaboracion: e.target.value})}
+              min={fechaMin} // 👈 CORRECCIÓN: Límite de 7 días atrás
+              max={fechaMax} // 👈 CORRECCIÓN: Impide fechas futuras
               required
             />
           </div>
@@ -143,6 +146,8 @@ const FormularioIngreso = ({ form, setForm, onSubmit, mensaje, cargando, actuali
               className="w-full px-2 py-2 bg-slate-50 border border-slate-200 rounded-xl text-xs font-bold text-slate-600 focus:outline-none focus:bg-white" 
               value={form.fechaLlegada}
               onChange={(e) => setForm({...form, fechaLlegada: e.target.value})}
+              min={fechaMin} // 👈 CORRECCIÓN: Límite de 7 días atrás
+              max={fechaMax} // 👈 CORRECCIÓN: Impide fechas futuras
               required
             />
           </div>

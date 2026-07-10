@@ -120,6 +120,8 @@ function App() {
       }
       
       await fetchReporte(); 
+      // 👇 SOLUCIÓN APLICADA: Fuerza a los componentes visuales a recargarse de inmediato
+      setActualizarLotesKey(prev => prev + 1); 
       setMensaje({ texto: "Inventario actualizado correctamente.", tipo: "success" });
       return true; 
     } catch (err) {
@@ -131,19 +133,50 @@ function App() {
     }
   };
 
+  const hoy = new Date();
+  
+  // Límite Máximo: El día de hoy (impide seleccionar fechas futuras)
+  const fechaMaxInmueble = hoy.toISOString().split('T')[0];
+  
+  // Límite Mínimo: Hace 7 días exactos
+  const haceSieteDias = new Date();
+  haceSieteDias.setDate(hoy.getDate() - 7);
+  const fechaMinInmueble = haceSieteDias.toISOString().split('T')[0];
+
   const handleTrozar = async (id) => {
     if (!sesion || sesion.rol !== 'ROLE_VENTAS') {
       alert("Acceso denegado: La fábrica de pasteles no registra trozados en vitrina.");
       return false;
     }
 
-    const cantidadIngresada = window.prompt("¿En cuántas porciones se dividirá este pastel? (Ej: 10, 12, 15):");
-    if (cantidadIngresada === null) return false; 
+    const MAX_TROZOS = 7;
+    let cantidadIngresada = "";
+    let totalTrozos = 0;
+    let esValido = false;
 
-    const totalTrozos = parseInt(cantidadIngresada);
-    if (isNaN(totalTrozos) || totalTrozos <= 0) {
-      alert("Por favor, ingresa un número de trozos válido.");
-      return false;
+    // Bucle de validación interactiva en el cliente
+    while (!esValido) {
+      cantidadIngresada = window.prompt(`¿En cuántas porciones se dividirá este pastel? (Máximo permitido: ${MAX_TROZOS} trozos):`);
+      
+      // Si el usuario presiona "Cancelar", abortamos el flujo limpiamente
+      if (cantidadIngresada === null) return false; 
+
+      totalTrozos = parseInt(cantidadIngresada);
+
+      // Validación 1: Verificar que sea un número entero mayor que cero
+      if (isNaN(totalTrozos) || totalTrozos <= 0) {
+        alert("Por favor, ingresa un número de trozos válido y mayor a 0.");
+        continue; // Reinicia el prompt
+      }
+
+      // Validación 2: Control estricto del límite máximo normativo (Máximo 7)
+      if (totalTrozos > MAX_TROZOS) {
+        alert(`Error Operacional: No se permite fraccionar en ${totalTrozos} porciones. El estándar máximo de la pastelería es de ${MAX_TROZOS} trozos.`);
+        continue; // Reinicia el prompt obligando a poner un número menor o igual a 7
+      }
+
+      // Si supera ambos filtros, el dato es seguro y rompemos el bucle
+      esValido = true;
     }
 
     try {
@@ -152,11 +185,13 @@ function App() {
       });
 
       await fetchReporte();
+      // 👇 SOLUCIÓN APLICADA: Dispara la reactividad instantánea en el Dashboard
+      setActualizarLotesKey(prev => prev + 1); 
       setMensaje({ texto: `¡Producto trozado en ${totalTrozos} porciones con éxito!`, tipo: "success" });
       return totalTrozos; 
     } catch (err) {
       console.error("Error al trozar:", err);
-      setMensaje({ texto: "Error al procesar. Verifica tus permisos de red.", tipo: "error" });
+      setMensaje({ texto: "Error al procesar. Solo es posible trozar productos Grandes.", tipo: "error" });
       return false;
     } finally {
       setTimeout(() => setMensaje(null), 4000);
@@ -232,6 +267,8 @@ function App() {
                 mensaje={mensaje} 
                 cargando={cargando}
                 actualizarCatalogoKey={actualizarCatalogoKey}
+                fechaMin={fechaMinInmueble}
+                fechaMax={fechaMaxInmueble}
               />
             </div>
             
