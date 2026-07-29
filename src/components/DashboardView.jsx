@@ -11,7 +11,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
   const [detalles, setDetalles] = useState({});
   const [cargandoDetalle, setCargandoDetalle] = useState({});
 
-  // 🚀 Cargar los detalles de todos los productos automáticamente para saber Enteros vs Trozados ANTES de abrir
   useEffect(() => {
     setDetalles({});
     setExpandidos({});
@@ -221,7 +220,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                   Object.entries(info.productos).map(([nombreProducto, cantidadReporte]) => {
                     const lotesCargados = detalles[nombreProducto] || [];
                     
-                    // Filtrar por tamaño si el nombre indica (Grande) o (Mediano)
                     const lotesFiltrados = lotesCargados.filter((item) => {
                       const esAcordeonGrande = nombreProducto.toLowerCase().includes('(grande)');
                       const esAcordeonMediano = nombreProducto.toLowerCase().includes('(mediano)');
@@ -231,40 +229,47 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                       return true;
                     });
 
-                    // 🎯 CONTEO EXACTO FÍSICO DE ENTEROS VS TROZADOS
                     const enterosCount = lotesFiltrados.filter(i => i.esEntero?.toLowerCase() === 'si').length;
                     const trozadosCount = lotesFiltrados.filter(i => i.esEntero?.toLowerCase() === 'no').length;
-                    const totalLotesFisicos = lotesFiltrados.length;
 
                     return (
                       <div key={nombreProducto} className="flex flex-col border border-slate-200 rounded-[1.5rem] overflow-hidden bg-white hover:border-[#3D2517]/40 transition-colors">
                         
-                        {/* 🌟 CABECERA ACORDEÓN (MUESTRA LAS CANTIDADES DE ENTEROS Y TROZADOS ANTES DE ABRIR) */}
-                        <div onClick={() => toggleExpandir(nombreProducto)} className={`flex justify-between items-center p-4 cursor-pointer transition-colors ${expandidos[nombreProducto] ? 'bg-[#FDF6F0]' : 'hover:bg-slate-50'}`}>
-                          <div className="flex items-center gap-3 pr-2 flex-grow min-w-0">
-                            {expandidos[nombreProducto] ? <ChevronUp size={16} className="text-[#D91A3D] flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />}
-                            {/* Nombre Completo sin recortar */}
-                            <span className="text-slate-800 text-sm font-bold leading-tight break-words">{nombreProducto}</span>
+                        {/* 🌟 CABECERA RE-ESTILIZADA: DISEÑO ADAPTATIVO SIN SOBREPOSICIÓN */}
+                        <div 
+                          onClick={() => toggleExpandir(nombreProducto)} 
+                          className={`p-4 cursor-pointer transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${expandidos[nombreProducto] ? 'bg-[#FDF6F0]' : 'hover:bg-slate-50'}`}
+                        >
+                          {/* Bloque Izquierdo: Flecha + Nombre completo */}
+                          <div className="flex items-start gap-3 min-w-0">
+                            {expandidos[nombreProducto] ? (
+                              <ChevronUp size={16} className="text-[#D91A3D] flex-shrink-0 mt-0.5" />
+                            ) : (
+                              <ChevronDown size={16} className="text-slate-400 flex-shrink-0 mt-0.5" />
+                            )}
+                            <span className="text-slate-800 text-sm font-bold leading-snug break-words">
+                              {nombreProducto}
+                            </span>
                           </div>
                           
-                          <div className="flex items-center gap-2 flex-shrink-0">
-                            {/* 🟢/🟡 INDICADORES VISIBLES DE ENTEROS Y TROZADOS ANTES DE ABRIR */}
+                          {/* Bloque Derecho: Insignias de Enteros / Trozados sin encimarse */}
+                          <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0 self-end sm:self-center ml-7 sm:ml-0">
                             {lotesFiltrados.length > 0 ? (
-                              <div className="flex items-center gap-1.5 text-[9px] font-black uppercase">
+                              <>
                                 {enterosCount > 0 && (
-                                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1" title="Piezas Enteras">
+                                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md text-[9px] font-black uppercase whitespace-nowrap">
                                     🟢 {enterosCount} {enterosCount === 1 ? 'Entero' : 'Enteros'}
                                   </span>
                                 )}
                                 {trozadosCount > 0 && (
-                                  <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1" title="Piezas Trozadas">
+                                  <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md text-[9px] font-black uppercase whitespace-nowrap">
                                     ✂️ {trozadosCount} {trozadosCount === 1 ? 'Trozado' : 'Trozados'}
                                   </span>
                                 )}
-                              </div>
+                              </>
                             ) : (
-                              <div className="flex items-center gap-1 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
-                                <Hash size={12} className="text-slate-300" />
+                              <div className="flex items-center gap-1 bg-white px-2.5 py-1 rounded-xl border border-slate-200 shadow-xs">
+                                <Hash size={11} className="text-slate-300" />
                                 <span className="font-bold text-[#3D2517] text-xs">{cantidadReporte}</span>
                               </div>
                             )}
@@ -289,7 +294,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                                   <div key={item.id} className={`flex flex-col gap-3 p-4 rounded-2xl border shadow-sm transition-all ${
                                     esTrozado ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-slate-200'
                                   }`}>
-                                    {/* Estado del Lote (Pieza Entera vs Trozado) */}
+                                    {/* Estado del Lote */}
                                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                                       <div className="flex items-center gap-1.5">
                                         {esTrozado ? (
@@ -305,7 +310,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                                       <span className="text-[9px] text-slate-400 font-mono bg-white px-2 py-0.5 rounded border border-slate-100">ID: {item.id}</span>
                                     </div>
 
-                                    {/* FECHAS DE ELABORACIÓN Y LLEGADA */}
+                                    {/* FECHAS */}
                                     <div className="space-y-2">
                                       <div className="flex justify-between items-center">
                                         <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
