@@ -11,10 +11,31 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
   const [detalles, setDetalles] = useState({});
   const [cargandoDetalle, setCargandoDetalle] = useState({});
 
+  // 🚀 Cargar los detalles de todos los productos automáticamente para saber Enteros vs Trozados ANTES de abrir
   useEffect(() => {
     setDetalles({});
     setExpandidos({});
-  }, [actualizarLotesKey]);
+    
+    if (reporte && reporte.detallePorCategoria) {
+      Object.values(reporte.detallePorCategoria).forEach(info => {
+        if (info.productos) {
+          Object.keys(info.productos).forEach(nombreProducto => {
+            cargarDetalleProducto(nombreProducto);
+          });
+        }
+      });
+    }
+  }, [actualizarLotesKey, reporte]);
+
+  const cargarDetalleProducto = async (nombreProducto) => {
+    try {
+      const nombreLimpio = nombreProducto.includes(' (') ? nombreProducto.split(' (')[0] : nombreProducto;
+      const res = await api.get(`api/productos/buscar?nombre=${nombreLimpio}`);
+      setDetalles(prev => ({ ...prev, [nombreProducto]: res.data }));
+    } catch (err) {
+      console.error("Error al precargar lotes de", nombreProducto, err);
+    }
+  };
 
   const categoriesFijas = ['Sandwich', 'Pastelería'];
 
@@ -94,16 +115,10 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
     } catch (err) { console.error(err); }
   };
 
-  const toggleExpandir = async (nombreProducto) => {
-    const estaAbierto = !!expandidos[nombreProducto];
-    setExpandidos(prev => ({ ...prev, [nombreProducto]: !estaAbierto }));
-    if (!estaAbierto && !detalles[nombreProducto]) {
-      setCargandoDetalle(prev => ({ ...prev, [nombreProducto]: true }));
-      try {
-        const nombreLimpio = nombreProducto.includes(' (') ? nombreProducto.split(' (')[0] : nombreProducto;
-        const res = await api.get(`api/productos/buscar?nombre=${nombreLimpio}`);
-        setDetalles(prev => ({ ...prev, [nombreProducto]: res.data }));
-      } catch (err) { console.error(err); } finally { setCargandoDetalle(prev => ({ ...prev, [nombreProducto]: false })); }
+  const toggleExpandir = (nombreProducto) => {
+    setExpandidos(prev => ({ ...prev, [nombreProducto]: !prev[nombreProducto] }));
+    if (!detalles[nombreProducto]) {
+      cargarDetalleProducto(nombreProducto);
     }
   };
 
@@ -148,7 +163,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
         </div>
       )}
 
-      {/* TOTAL GLOBAL RE-ESTILIZADO CON LA TEMÁTICA DULCINEA */}
+      {/* TOTAL GLOBAL RE-ESTILIZADO */}
       <div className="bg-white border border-[#3D2517]/20 p-8 rounded-[2rem] shadow-xl shadow-[#3D2517]/5 animate-fade-in">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
           <div>
@@ -203,51 +218,66 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
               
               <div className="space-y-4">
                 {tieneProductos ? (
-                  Object.entries(info.productos).map(([nombreProducto, cantidad]) => {
+                  Object.entries(info.productos).map(([nombreProducto, cantidadReporte]) => {
                     const lotesCargados = detalles[nombreProducto] || [];
-                    const trozadosCount = lotesCargados.filter(i => i.esEntero?.toLowerCase() === 'no').length;
-                    const enterosCount = lotesCargados.filter(i => i.esEntero?.toLowerCase() === 'si').length;
+                    
+                    // Filtrar por tamaño si el nombre indica (Grande) o (Mediano)
+                    const lotesFiltrados = lotesCargados.filter((item) => {
+                      const esAcordeonGrande = nombreProducto.toLowerCase().includes('(grande)');
+                      const esAcordeonMediano = nombreProducto.toLowerCase().includes('(mediano)');
+                      const tamanoItem = item.tamano?.toLowerCase() || '';
+                      if (esAcordeonGrande) return tamanoItem === 'grande';
+                      if (esAcordeonMediano) return tamanoItem === 'mediano';
+                      return true;
+                    });
+
+                    // 🎯 CONTEO EXACTO FÍSICO DE ENTEROS VS TROZADOS
+                    const enterosCount = lotesFiltrados.filter(i => i.esEntero?.toLowerCase() === 'si').length;
+                    const trozadosCount = lotesFiltrados.filter(i => i.esEntero?.toLowerCase() === 'no').length;
+                    const totalLotesFisicos = lotesFiltrados.length;
 
                     return (
                       <div key={nombreProducto} className="flex flex-col border border-slate-200 rounded-[1.5rem] overflow-hidden bg-white hover:border-[#3D2517]/40 transition-colors">
-                        {/* CABECERA ACORDEÓN: MOSTRAR TEXTO COMPLETO Y CONTEO DE ENTEROS/TROZADOS */}
+                        
+                        {/* 🌟 CABECERA ACORDEÓN (MUESTRA LAS CANTIDADES DE ENTEROS Y TROZADOS ANTES DE ABRIR) */}
                         <div onClick={() => toggleExpandir(nombreProducto)} className={`flex justify-between items-center p-4 cursor-pointer transition-colors ${expandidos[nombreProducto] ? 'bg-[#FDF6F0]' : 'hover:bg-slate-50'}`}>
-                          <div className="flex items-center gap-3 pr-2">
+                          <div className="flex items-center gap-3 pr-2 flex-grow min-w-0">
                             {expandidos[nombreProducto] ? <ChevronUp size={16} className="text-[#D91A3D] flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />}
-                            {/* 💡 MEJORA 1: Eliminada la clase truncate para permitir ver el nombre completo */}
+                            {/* Nombre Completo sin recortar */}
                             <span className="text-slate-800 text-sm font-bold leading-tight break-words">{nombreProducto}</span>
                           </div>
                           
                           <div className="flex items-center gap-2 flex-shrink-0">
-                            {/* 💡 MEJORA 2: Resumen rápido de Enteros vs Trozados en la cabecera si están cargados los lotes */}
-                            {expandidos[nombreProducto] && lotesCargados.length > 0 && trozadosCount > 0 && (
-                              <div className="hidden sm:flex items-center gap-1 text-[9px] font-black uppercase">
-                                {enterosCount > 0 && <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-md">{enterosCount} Ent</span>}
-                                <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">{trozadosCount} Troz</span>
+                            {/* 🟢/🟡 INDICADORES VISIBLES DE ENTEROS Y TROZADOS ANTES DE ABRIR */}
+                            {lotesFiltrados.length > 0 ? (
+                              <div className="flex items-center gap-1.5 text-[9px] font-black uppercase">
+                                {enterosCount > 0 && (
+                                  <span className="bg-emerald-100 text-emerald-800 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1" title="Piezas Enteras">
+                                    🟢 {enterosCount} {enterosCount === 1 ? 'Entero' : 'Enteros'}
+                                  </span>
+                                )}
+                                {trozadosCount > 0 && (
+                                  <span className="bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1" title="Piezas Trozadas">
+                                    ✂️ {trozadosCount} {trozadosCount === 1 ? 'Trozado' : 'Trozados'}
+                                  </span>
+                                )}
+                              </div>
+                            ) : (
+                              <div className="flex items-center gap-1 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+                                <Hash size={12} className="text-slate-300" />
+                                <span className="font-bold text-[#3D2517] text-xs">{cantidadReporte}</span>
                               </div>
                             )}
-
-                            <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
-                              <Hash size={12} className="text-slate-300" />
-                              <span className="font-bold text-[#3D2517] text-xs">{cantidad}</span>
-                            </div>
                           </div>
                         </div>
 
                         {/* DESPLEGABLE DE LOTES DETALLADOS */}
                         {expandidos[nombreProducto] && (
                           <div className="p-3 bg-slate-50 border-t border-slate-100 space-y-3">
-                            {cargandoDetalle[nombreProducto] ? (
-                              <p className="text-[10px] text-center text-slate-400 uppercase font-black animate-pulse py-4">Cargando lotes...</p>
+                            {lotesFiltrados.length === 0 ? (
+                              <p className="text-[10px] text-center text-slate-400 uppercase font-black animate-pulse py-4">Cargando datos del lote...</p>
                             ) : (
-                              detalles[nombreProducto]?.filter((item) => {
-                                const esAcordeonGrande = nombreProducto.toLowerCase().includes('(grande)');
-                                const esAcordeonMediano = nombreProducto.toLowerCase().includes('(mediano)');
-                                const tamanoItem = item.tamano?.toLowerCase() || '';
-                                if (esAcordeonGrande) return tamanoItem === 'grande';
-                                if (esAcordeonMediano) return tamanoItem === 'mediano';
-                                return true;
-                              }).map((item) => {
+                              lotesFiltrados.map((item) => {
                                 const infoTiempo = obtenerDiasTranscurridos(item.fechaElaboracion);
                                 let colorAlerta = "bg-slate-50 text-slate-500 border-slate-200";
                                 if (infoTiempo.dias >= 4) { colorAlerta = "bg-red-50 text-red-700 border-red-200 animate-pulse font-extrabold"; }
@@ -259,12 +289,12 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                                   <div key={item.id} className={`flex flex-col gap-3 p-4 rounded-2xl border shadow-sm transition-all ${
                                     esTrozado ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-slate-200'
                                   }`}>
-                                    {/* 💡 MEJORA 3: Etiqueta de Estado Clarísima (Entero vs Trozado) */}
+                                    {/* Estado del Lote (Pieza Entera vs Trozado) */}
                                     <div className="flex justify-between items-center border-b border-slate-100 pb-2">
                                       <div className="flex items-center gap-1.5">
                                         {esTrozado ? (
                                           <span className="flex items-center gap-1 text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-md">
-                                            <Scissors size={10} /> Trozado ({item.stockTrozos} porciones)
+                                            <Scissors size={10} /> Trozado ({item.stockTrozos} porciones disponibles)
                                           </span>
                                         ) : (
                                           <span className="flex items-center gap-1 text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md">
@@ -292,7 +322,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                                         <span className="text-slate-400 w-8">Lleg:</span> <span className="text-slate-800">{item.fechaLlegada}</span>
                                       </div>
 
-                                      {/* PANEL DE CONTROL DE PORCIONES TROZADAS */}
+                                      {/* MODIFICAR TROZOS */}
                                       {esTrozado && (
                                         <div className="mt-2 flex items-center justify-between bg-white border border-amber-200 px-3 py-2 rounded-xl shadow-xs">
                                           <div className="text-[10px] font-black text-[#3D2517] uppercase flex items-center gap-1.5">
@@ -309,7 +339,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                                       )}
                                     </div>
 
-                                    {/* BOTONES DE ACCIÓN (TROZAR / ELIMINAR) */}
+                                    {/* BOTONES DE ACCIÓN */}
                                     <div className="flex items-center justify-end border-t border-slate-100 pt-2.5 mt-1">
                                       <div className="flex gap-2 items-center">
                                         {!esSoloLectura && !cat.toLowerCase().includes('sandwich') && !esTrozado && (
