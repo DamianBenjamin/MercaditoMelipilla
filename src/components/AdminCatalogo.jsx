@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Shield, Plus, Trash2, Search, DollarSign } from 'lucide-react';
+import { Shield, Plus, Trash2, Search } from 'lucide-react';
 import api from '../services/api';
 
 const AdminCatalogo = ({ onCatalogoCambiado }) => {
@@ -7,7 +7,7 @@ const AdminCatalogo = ({ onCatalogoCambiado }) => {
   const [busqueda, setBusqueda] = useState('');
   const [nuevoNombre, setNuevoNombre] = useState('');
   const [nuevaCategoria, setNuevaCategoria] = useState('Sandwich');
-  const [nuevoPrecio, setNuevoPrecio] = useState(''); // 🎯 NUEVO ESTADO PARA EL PRECIO
+  const [nuevoPrecio, setNuevoPrecio] = useState('');
   const [cargando, setCargando] = useState(false);
 
   const cargarCatalogo = async () => {
@@ -27,6 +27,14 @@ const AdminCatalogo = ({ onCatalogoCambiado }) => {
   const handleAgregar = async (e) => {
     e.preventDefault();
     if (!nuevoNombre.trim()) return;
+
+    // Validar que si ingresa un precio, no sea negativo
+    const valorPrecio = nuevoPrecio !== '' ? Number(nuevoPrecio) : 0;
+    if (isNaN(valorPrecio) || valorPrecio < 0) {
+      alert("Por favor, ingresa un precio válido (0 o superior).");
+      return;
+    }
+
     if (cargando) return;
     setCargando(true);
 
@@ -34,7 +42,7 @@ const AdminCatalogo = ({ onCatalogoCambiado }) => {
       await api.post('/api/catalogo/registrar', {
         nombre: nuevoNombre.trim(),
         categoriaDefecto: nuevaCategoria,
-        precioUnitario: nuevoPrecio ? parseFloat(nuevoPrecio) : 0 // 🎯 ENVÍO DEL PRECIO AL BACKEND
+        precioUnitario: valorPrecio
       });
       alert(`¡"${nuevoNombre}" agregado al catálogo maestro!`);
       setNuevoNombre('');
@@ -87,18 +95,23 @@ const AdminCatalogo = ({ onCatalogoCambiado }) => {
           required
         />
 
-        {/* 🎯 CAMPO DE PRECIO UNITARIO Y CATEGORÍA EN MISMOS FILA */}
+        {/* Campo Precio Libre (Cualquier número >= 0) + Categoría */}
         <div className="grid grid-cols-2 gap-2">
           <div className="relative flex items-center">
-            <span className="absolute left-2.5 text-slate-400 font-bold text-xs">$</span>
+            <span className="absolute left-3 text-slate-400 font-bold text-xs">$</span>
             <input
               type="number"
               min="0"
-              step="100"
-              placeholder="Precio unitario"
+              placeholder="Precio libre..."
               value={nuevoPrecio}
-              onChange={(e) => setNuevoPrecio(e.target.value)}
-              className="w-full pl-6 pr-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-[#3D2517]/50"
+              onChange={(e) => {
+                const val = e.target.value;
+                // Evitar escribir el signo menos (-)
+                if (val === '' || Number(val) >= 0) {
+                  setNuevoPrecio(val);
+                }
+              }}
+              className="w-full pl-7 pr-2 py-2 bg-white border border-slate-200 rounded-xl text-xs font-bold text-slate-700 focus:outline-none focus:border-[#3D2517]/50"
             />
           </div>
 
@@ -122,7 +135,7 @@ const AdminCatalogo = ({ onCatalogoCambiado }) => {
         </button>
       </form>
 
-      {/* BÚSQUEDA Y LISTA CON VISUALIZACIÓN DE PRECIO */}
+      {/* BÚSQUEDA Y LISTADO CON MOSTRADORES DE PRECIO */}
       <div className="space-y-2">
         <div className="relative">
           <Search size={12} className="absolute left-3 top-2.5 text-slate-400" />
@@ -138,9 +151,8 @@ const AdminCatalogo = ({ onCatalogoCambiado }) => {
         <div className="max-h-48 overflow-y-auto divide-y divide-slate-100 border border-slate-200 rounded-xl">
           {items.length > 0 ? (
             items.map((item) => {
-              const precioFormateado = item.precioUnitario || item.precio
-                ? `$${Number(item.precioUnitario || item.precio).toLocaleString('es-CL')}`
-                : 'Sin precio';
+              const precioVal = item.precioUnitario ?? item.precio;
+              const tienePrecio = precioVal !== undefined && precioVal !== null && precioVal !== 0;
 
               return (
                 <div key={item.id} className="p-2.5 flex justify-between items-center bg-white hover:bg-[#FDF6F0] transition-colors">
@@ -148,9 +160,8 @@ const AdminCatalogo = ({ onCatalogoCambiado }) => {
                     <span className="text-xs font-bold text-slate-700 truncate">{item.nombre}</span>
                     <div className="flex items-center gap-2 mt-0.5">
                       <span className="text-[8px] font-black uppercase text-[#3D2517]/60 tracking-wider">{item.categoriaDefecto}</span>
-                      {/* 🎯 INDICADOR VISUAL DEL PRECIO UNITARIO */}
                       <span className="text-[9px] font-bold text-emerald-700 bg-emerald-50 px-1.5 py-0.2 rounded border border-emerald-100 font-mono">
-                        {precioFormateado}
+                        {tienePrecio ? `$${Number(precioVal).toLocaleString('es-CL')}` : 'Sin precio'}
                       </span>
                     </div>
                   </div>
