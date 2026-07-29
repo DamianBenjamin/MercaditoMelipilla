@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2, Inbox, FileText, Table, AlertTriangle, Bell, PieChart, CheckCircle2 } from 'lucide-react';
+import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2, Inbox, FileText, Table, AlertTriangle, Bell, PieChart, CheckCircle2, DollarSign } from 'lucide-react';
 import api from '../services/api';
 import NotasInventario from './NotasInventario';
 import { jsPDF } from 'jspdf';
@@ -9,7 +9,6 @@ import * as XLSX from 'xlsx';
 const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSoloLectura }) => {
   const [expandidos, setExpandidos] = useState({});
   const [detalles, setDetalles] = useState({});
-  const [cargandoDetalle, setCargandoDetalle] = useState({});
 
   useEffect(() => {
     setDetalles({});
@@ -37,6 +36,34 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
   };
 
   const categoriesFijas = ['Sandwich', 'Pastelería'];
+
+  // 🎯 CÁLCULO DINÁMICO DEL VALOR TOTAL EN PESOS CHILENOS ($)
+  const calcularValorTotalDinero = () => {
+    let acumulado = 0;
+
+    Object.values(detalles).forEach(lotesArray => {
+      if (Array.isArray(lotesArray)) {
+        lotesArray.forEach(item => {
+          const precio = item.precioUnitario || item.precio || item.catalogoProducto?.precioUnitario || 0;
+          const esTrozado = item.esEntero?.toLowerCase() === 'no';
+
+          if (esTrozado) {
+            // Si está trozado, calcula proporcionalmente según las porciones que quedan
+            const porcionesTotales = item.porcionesTotales || 6; // Valor por defecto si no viene
+            const porcionesActuales = item.stockTrozos || 0;
+            acumulado += (precio / porcionesTotales) * porcionesActuales;
+          } else {
+            // Pieza entera o unidad estándar
+            acumulado += precio;
+          }
+        });
+      }
+    });
+
+    return Math.round(acumulado);
+  };
+
+  const valorTotalCalculado = calcularValorTotalDinero();
 
   const obtenerDiasTranscurridos = (fechaElab) => {
     if (!fechaElab) return { texto: "Sin fecha", dias: 0 };
@@ -85,6 +112,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
       doc.setFont("helvetica", "bold"); doc.setFontSize(20); doc.text("MERCADITO DULCINEA", 14, 20);
       doc.setFont("helvetica", "normal"); doc.setFontSize(10); doc.text(`Reporte Diario de Inventario - Fecha: ${fechaHoy}`, 14, 28);
       doc.text(`Stock Total General en Sistema: ${reporte.totalGeneral} unidades`, 14, 34);
+      doc.text(`Valorización Estimada de Inventario: $${valorTotalCalculado.toLocaleString('es-CL')}`, 14, 40);
       const columnas = ["Categoría", "Producto / Detalle", "Cantidad"];
       const filas = [];
       Object.entries(reporte.detallePorCategoria).forEach(([categoria, info]) => {
@@ -93,7 +121,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
         });
       });
       if (filas.length > 0) {
-        autoTable(doc, { startY: 40, head: [columnas], body: filas, theme: 'striped', headStyles: { fillColor: [61, 37, 23] }, styles: { font: "helvetica", fontSize: 10 } });
+        autoTable(doc, { startY: 46, head: [columnas], body: filas, theme: 'striped', headStyles: { fillColor: [61, 37, 23] }, styles: { font: "helvetica", fontSize: 10 } });
       } else { doc.text("No hay productos registrados en el inventario actual.", 14, 50); }
       doc.save(`reporte_inventario_${fechaHoy}.pdf`);
     } catch (error) { console.error("Error al generar el PDF:", error); }
@@ -162,14 +190,33 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
         </div>
       )}
 
-      {/* TOTAL GLOBAL RE-ESTILIZADO */}
+      {/* 🎯 TOTAL GLOBAL CON VALORIZACIÓN EN DINERO ($) */}
       <div className="bg-white border border-[#3D2517]/20 p-8 rounded-[2rem] shadow-xl shadow-[#3D2517]/5 animate-fade-in">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
-          <div>
-            <p className="text-xl font-bold text-[#3D2517]">Inventario Total</p>
-            <h3 className="text-7xl font-sans font-black text-[#3D2517] tracking-tighter">{reporte.totalGeneral}</h3>
+        <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
+          
+          {/* Bloque de Números: Unidades Totales + Valor en $ */}
+          <div className="flex flex-wrap items-center gap-8">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-slate-400">Stock Total</p>
+              <h3 className="text-6xl font-sans font-black text-[#3D2517] tracking-tighter">
+                {reporte.totalGeneral} <span className="text-lg font-bold text-slate-400">Un.</span>
+              </h3>
+            </div>
+
+            <div className="h-12 w-px bg-slate-200 hidden sm:block" />
+
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-emerald-800/70 flex items-center gap-1">
+                <DollarSign size={14} className="text-emerald-600" /> Valor Total Estimado
+              </p>
+              <h3 className="text-5xl font-mono font-black text-emerald-700 tracking-tight">
+                ${valorTotalCalculado.toLocaleString('es-CL')}
+              </h3>
+            </div>
           </div>
-          <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
+
+          {/* Botones de Exportación */}
+          <div className="flex flex-wrap gap-3 items-center w-full lg:w-auto">
             <button 
               onClick={exportarPDF} 
               className="flex items-center gap-2 px-5 py-2.5 bg-[#3D2517] hover:bg-black text-white rounded-xl text-xs font-sans font-black uppercase tracking-wider cursor-pointer shadow-md shadow-[#3D2517]/10 transition-all active:scale-95"
@@ -184,8 +231,8 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
               <Table size={16} /> Exportar Excel
             </button>
             
-            <div className="hidden sm:block p-4 bg-[#D91A3D]/5 shadow-inner rounded-2xl border border-[#D91A3D]/10 text-[#D91A3D]">
-              <Package size={32} />
+            <div className="hidden sm:block p-3.5 bg-[#D91A3D]/5 shadow-inner rounded-2xl border border-[#D91A3D]/10 text-[#D91A3D]">
+              <Package size={28} />
             </div>
           </div>
         </div>
@@ -274,7 +321,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                           </div>
                         </div>
 
-                        {/* 🎯 DESPLEGABLE DE LOTES RE-DISEÑADO Y ULTRA-ORDENADO */}
+                        {/* DESPLEGABLE DE LOTES */}
                         {expandidos[nombreProducto] && (
                           <div className="p-2.5 bg-slate-50 border-t border-slate-100 space-y-2.5">
                             {lotesFiltrados.length === 0 ? (
@@ -295,7 +342,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                                       esTrozado ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-slate-200'
                                     }`}
                                   >
-                                    {/* 1. Estado y ID */}
                                     <div className="flex justify-between items-center mb-2.5 gap-2">
                                       {esTrozado ? (
                                         <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 truncate">
@@ -311,7 +357,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                                       </span>
                                     </div>
 
-                                    {/* 2. Sección de Fechas (Formateadas sin saltos de línea) */}
                                     <div className="space-y-1.5 text-[10px] font-bold text-slate-700 bg-white/80 p-2 rounded-lg border border-slate-100">
                                       <div className="flex items-center justify-between gap-1 flex-wrap">
                                         <div className="flex items-center gap-1.5 whitespace-nowrap">
@@ -331,7 +376,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                                       </div>
                                     </div>
 
-                                    {/* 3. Ajuste de Porciones Quedan (Solo si está trozado) */}
                                     {esTrozado && (
                                       <div className="mt-2 flex items-center justify-between bg-white border border-amber-200 p-1.5 rounded-lg">
                                         <div className="text-[9px] font-black text-[#3D2517] uppercase flex items-center gap-1">
@@ -350,7 +394,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                                       </div>
                                     )}
 
-                                    {/* 4. Botones de Acción inferior */}
                                     <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100">
                                       <div className="flex gap-1.5 items-center ml-auto">
                                         {!esSoloLectura && !cat.toLowerCase().includes('sandwich') && !esTrozado && (
