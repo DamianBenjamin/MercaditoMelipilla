@@ -9,7 +9,29 @@ import * as XLSX from 'xlsx';
 const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSoloLectura }) => {
   const [expandidos, setExpandidos] = useState({});
   const [detalles, setDetalles] = useState({});
+  const [mapaPrecios, setMapaPrecios] = useState({}); // 🎯 MAPA AUXILIAR DE PRECIOS DEL CATÁLOGO
 
+  // 1. Cargar Precios del Catálogo Maestro
+  useEffect(() => {
+    const cargarPreciosCatalogo = async () => {
+      try {
+        const res = await api.get('api/catalogo/buscar?termino=');
+        const mapa = {};
+        (res.data || []).forEach(item => {
+          if (item.nombre) {
+            const precio = item.precioUnitario ?? item.precio ?? 0;
+            mapa[item.nombre.toLowerCase().trim()] = Number(precio);
+          }
+        });
+        setMapaPrecios(mapa);
+      } catch (err) {
+        console.error("Error al cargar mapa de precios:", err);
+      }
+    };
+    cargarPreciosCatalogo();
+  }, []);
+
+  // 2. Cargar Detalle de Lotes
   useEffect(() => {
     setDetalles({});
     setExpandidos({});
@@ -37,23 +59,25 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
 
   const categoriesFijas = ['Sandwich', 'Pastelería'];
 
-  // 🎯 CÁLCULO DINÁMICO DEL VALOR TOTAL EN PESOS CHILENOS ($)
+  // 🎯 CÁLCULO ROBUSTO Y DINÁMICO DEL VALOR TOTAL ($)
   const calcularValorTotalDinero = () => {
     let acumulado = 0;
 
-    Object.values(detalles).forEach(lotesArray => {
+    Object.entries(detalles).forEach(([nombreProducto, lotesArray]) => {
       if (Array.isArray(lotesArray)) {
+        // Buscar precio en el item o en el mapa del catálogo por nombre
+        const nombreLimpio = nombreProducto.includes(' (') ? nombreProducto.split(' (')[0] : nombreProducto;
+        const precioEnMapa = mapaPrecios[nombreLimpio.toLowerCase().trim()] || mapaPrecios[nombreProducto.toLowerCase().trim()] || 0;
+
         lotesArray.forEach(item => {
-          const precio = item.precioUnitario || item.precio || item.catalogoProducto?.precioUnitario || 0;
+          const precio = item.precioUnitario || item.precio || item.catalogoProducto?.precioUnitario || precioEnMapa;
           const esTrozado = item.esEntero?.toLowerCase() === 'no';
 
           if (esTrozado) {
-            // Si está trozado, calcula proporcionalmente según las porciones que quedan
-            const porcionesTotales = item.porcionesTotales || 6; // Valor por defecto si no viene
+            const porcionesTotales = item.porcionesTotales || 6;
             const porcionesActuales = item.stockTrozos || 0;
             acumulado += (precio / porcionesTotales) * porcionesActuales;
           } else {
-            // Pieza entera o unidad estándar
             acumulado += precio;
           }
         });
@@ -190,11 +214,10 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
         </div>
       )}
 
-      {/* 🎯 TOTAL GLOBAL CON VALORIZACIÓN EN DINERO ($) */}
+      {/* TOTAL GLOBAL CON VALORIZACIÓN EN DINERO ($) */}
       <div className="bg-white border border-[#3D2517]/20 p-8 rounded-[2rem] shadow-xl shadow-[#3D2517]/5 animate-fade-in">
         <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6">
           
-          {/* Bloque de Números: Unidades Totales + Valor en $ */}
           <div className="flex flex-wrap items-center gap-8">
             <div>
               <p className="text-xs font-black uppercase tracking-wider text-slate-400">Stock Total</p>
@@ -215,7 +238,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
             </div>
           </div>
 
-          {/* Botones de Exportación */}
           <div className="flex flex-wrap gap-3 items-center w-full lg:w-auto">
             <button 
               onClick={exportarPDF} 
