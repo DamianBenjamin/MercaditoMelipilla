@@ -235,12 +235,11 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                     return (
                       <div key={nombreProducto} className="flex flex-col border border-slate-200 rounded-[1.5rem] overflow-hidden bg-white hover:border-[#3D2517]/40 transition-colors">
                         
-                        {/* 🌟 CABECERA EN ESTRUCTURA VERTICAL (CERO SOBREPOSICIÓN) */}
+                        {/* CABECERA DE ACORDEÓN */}
                         <div 
                           onClick={() => toggleExpandir(nombreProducto)} 
                           className={`p-4 cursor-pointer transition-colors flex flex-col gap-2.5 ${expandidos[nombreProducto] ? 'bg-[#FDF6F0]' : 'hover:bg-slate-50'}`}
                         >
-                          {/* Fila Superior: Flecha + Título Completo */}
                           <div className="flex items-start gap-2.5 w-full min-w-0">
                             {expandidos[nombreProducto] ? (
                               <ChevronUp size={16} className="text-[#D91A3D] flex-shrink-0 mt-0.5" />
@@ -252,7 +251,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                             </span>
                           </div>
                           
-                          {/* Fila Inferior: Insignias alineadas a la derecha sin tocar el texto */}
                           <div className="flex items-center justify-end gap-1.5 flex-wrap w-full pl-6">
                             {lotesFiltrados.length > 0 ? (
                               <>
@@ -276,85 +274,100 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                           </div>
                         </div>
 
-                        {/* DESPLEGABLE DE LOTES DETALLADOS */}
+                        {/* 🎯 DESPLEGABLE DE LOTES RE-DISEÑADO Y ULTRA-ORDENADO */}
                         {expandidos[nombreProducto] && (
-                          <div className="p-3 bg-slate-50 border-t border-slate-100 space-y-3">
+                          <div className="p-2.5 bg-slate-50 border-t border-slate-100 space-y-2.5">
                             {lotesFiltrados.length === 0 ? (
                               <p className="text-[10px] text-center text-slate-400 uppercase font-black animate-pulse py-4">Cargando datos del lote...</p>
                             ) : (
                               lotesFiltrados.map((item) => {
                                 const infoTiempo = obtenerDiasTranscurridos(item.fechaElaboracion);
-                                let colorAlerta = "bg-slate-50 text-slate-500 border-slate-200";
+                                let colorAlerta = "bg-slate-100 text-slate-600 border-slate-200";
                                 if (infoTiempo.dias >= 4) { colorAlerta = "bg-red-50 text-red-700 border-red-200 animate-pulse font-extrabold"; }
                                 else if (infoTiempo.dias >= 2) { colorAlerta = "bg-amber-50 text-amber-800 border-amber-200"; }
 
                                 const esTrozado = item.esEntero?.toLowerCase() === 'no';
 
                                 return (
-                                  <div key={item.id} className={`flex flex-col gap-3 p-4 rounded-2xl border shadow-sm transition-all ${
-                                    esTrozado ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-slate-200'
-                                  }`}>
-                                    {/* Estado del Lote */}
-                                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
-                                      <div className="flex items-center gap-1.5">
-                                        {esTrozado ? (
-                                          <span className="flex items-center gap-1 text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-md">
-                                            <Scissors size={10} /> Trozado ({item.stockTrozos} porciones disponibles)
-                                          </span>
-                                        ) : (
-                                          <span className="flex items-center gap-1 text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md">
-                                            <CheckCircle2 size={10} /> Pieza Entera
-                                          </span>
+                                  <div 
+                                    key={item.id} 
+                                    className={`p-3 rounded-xl border transition-all ${
+                                      esTrozado ? 'bg-amber-50/50 border-amber-200' : 'bg-white border-slate-200'
+                                    }`}
+                                  >
+                                    {/* 1. Estado y ID */}
+                                    <div className="flex justify-between items-center mb-2.5 gap-2">
+                                      {esTrozado ? (
+                                        <span className="text-[9px] font-black uppercase bg-amber-100 text-amber-900 border border-amber-300 px-2 py-0.5 rounded-md flex items-center gap-1 truncate">
+                                          <Scissors size={10} /> Trozado ({item.stockTrozos} porciones)
+                                        </span>
+                                      ) : (
+                                        <span className="text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md flex items-center gap-1 whitespace-nowrap">
+                                          <CheckCircle2 size={10} /> Pieza Entera
+                                        </span>
+                                      )}
+                                      <span className="text-[9px] text-slate-400 font-mono font-bold whitespace-nowrap">
+                                        ID: {item.id}
+                                      </span>
+                                    </div>
+
+                                    {/* 2. Sección de Fechas (Formateadas sin saltos de línea) */}
+                                    <div className="space-y-1.5 text-[10px] font-bold text-slate-700 bg-white/80 p-2 rounded-lg border border-slate-100">
+                                      <div className="flex items-center justify-between gap-1 flex-wrap">
+                                        <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                          <Calendar size={12} className="text-[#D91A3D]/70 flex-shrink-0" />
+                                          <span className="text-slate-400 font-extrabold text-[9px]">ELAB:</span>
+                                          <span className="font-mono text-slate-800">{item.fechaElaboracion}</span>
+                                        </div>
+                                        <span className={`text-[8px] px-1.5 py-0.5 rounded border uppercase tracking-wider whitespace-nowrap flex items-center gap-1 ${colorAlerta}`}>
+                                          <Clock size={9} /> {infoTiempo.texto}
+                                        </span>
+                                      </div>
+
+                                      <div className="flex items-center gap-1.5 whitespace-nowrap">
+                                        <Truck size={12} className="text-blue-400 flex-shrink-0" />
+                                        <span className="text-slate-400 font-extrabold text-[9px]">LLEG:</span>
+                                        <span className="font-mono text-slate-800">{item.fechaLlegada}</span>
+                                      </div>
+                                    </div>
+
+                                    {/* 3. Ajuste de Porciones Quedan (Solo si está trozado) */}
+                                    {esTrozado && (
+                                      <div className="mt-2 flex items-center justify-between bg-white border border-amber-200 p-1.5 rounded-lg">
+                                        <div className="text-[9px] font-black text-[#3D2517] uppercase flex items-center gap-1">
+                                          <PieChart size={11} className="text-amber-600" />
+                                          <span>Porciones:</span> 
+                                          <span className="text-xs bg-amber-100 text-amber-900 px-1.5 py-0.2 rounded font-mono font-bold">{item.stockTrozos}</span>
+                                        </div>
+                                        {!esSoloLectura && (
+                                          <button 
+                                            onClick={(e) => { e.stopPropagation(); ajustarCantidadTrozos(item, nombreProducto); }} 
+                                            className="flex items-center gap-1 px-2 py-0.5 bg-slate-50 hover:bg-slate-100 text-[#3D2517] border border-slate-200 rounded text-[8px] font-black uppercase transition-all cursor-pointer"
+                                          >
+                                            <Edit2 size={9} /> Modificar
+                                          </button>
                                         )}
                                       </div>
-                                      <span className="text-[9px] text-slate-400 font-mono bg-white px-2 py-0.5 rounded border border-slate-100">ID: {item.id}</span>
-                                    </div>
+                                    )}
 
-                                    {/* FECHAS */}
-                                    <div className="space-y-2">
-                                      <div className="flex justify-between items-center">
-                                        <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
-                                          <Calendar size={14} className="text-[#D91A3D]/70 flex-shrink-0" />
-                                          <span className="text-slate-400 w-8">Elab:</span> <span className="text-slate-800">{item.fechaElaboracion}</span>
-                                        </div>
-                                        <div className={`flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-md border uppercase tracking-wider ${colorAlerta}`}>
-                                          <Clock size={10} /> {infoTiempo.texto}
-                                        </div>
-                                      </div>
-                                      
-                                      <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
-                                        <Truck size={14} className="text-blue-400 flex-shrink-0" />
-                                        <span className="text-slate-400 w-8">Lleg:</span> <span className="text-slate-800">{item.fechaLlegada}</span>
-                                      </div>
-
-                                      {/* MODIFICAR TROZOS */}
-                                      {esTrozado && (
-                                        <div className="mt-2 flex items-center justify-between bg-white border border-amber-200 px-3 py-2 rounded-xl shadow-xs">
-                                          <div className="text-[10px] font-black text-[#3D2517] uppercase flex items-center gap-1.5">
-                                            <PieChart size={12} className="text-amber-600" />
-                                            <span>Porciones Quedan:</span> 
-                                            <span className="text-xs bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300 font-mono font-bold">{item.stockTrozos}</span>
-                                          </div>
-                                          {!esSoloLectura && (
-                                            <button onClick={(e) => { e.stopPropagation(); ajustarCantidadTrozos(item, nombreProducto); }} className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 text-[#3D2517] border border-slate-200 rounded-lg text-[9px] font-black uppercase shadow-sm transition-all cursor-pointer">
-                                              <Edit2 size={10} /> Modificar
-                                            </button>
-                                          )}
-                                        </div>
-                                      )}
-                                    </div>
-
-                                    {/* BOTONES DE ACCIÓN */}
-                                    <div className="flex items-center justify-end border-t border-slate-100 pt-2.5 mt-1">
-                                      <div className="flex gap-2 items-center">
+                                    {/* 4. Botones de Acción inferior */}
+                                    <div className="flex items-center justify-between mt-2 pt-1.5 border-t border-slate-100">
+                                      <div className="flex gap-1.5 items-center ml-auto">
                                         {!esSoloLectura && !cat.toLowerCase().includes('sandwich') && !esTrozado && (
-                                          <button onClick={async (e) => { e.stopPropagation(); await onTrozar(item.id); }} className="p-2 bg-white hover:bg-[#FDF6F0] text-[#3D2517] border border-slate-200 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs">
-                                            <Scissors size={14} className="text-[#D91A3D]" /> <span className="text-[9px] font-black uppercase">Trozar Pieza</span>
+                                          <button 
+                                            onClick={async (e) => { e.stopPropagation(); await onTrozar(item.id); }} 
+                                            className="px-2.5 py-1 bg-white hover:bg-[#FDF6F0] text-[#3D2517] border border-slate-200 rounded-lg transition-colors flex items-center gap-1 cursor-pointer shadow-xs text-[9px] font-black uppercase"
+                                          >
+                                            <Scissors size={11} className="text-[#D91A3D]" /> Trozar Pieza
                                           </button>
                                         )}
                                         {!esSoloLectura && (
-                                          <button onClick={async (e) => { e.stopPropagation(); await onEliminar(nombreProducto, cat, item.id); }} className="p-2 text-slate-300 hover:text-[#D91A3D] hover:bg-[#FCEAEB] rounded-xl transition-colors cursor-pointer" title="Eliminar Lote">
-                                            <Trash2 size={14} />
+                                          <button 
+                                            onClick={async (e) => { e.stopPropagation(); await onEliminar(nombreProducto, cat, item.id); }} 
+                                            className="p-1 text-slate-300 hover:text-[#D91A3D] hover:bg-red-50 rounded-lg transition-colors cursor-pointer ml-1" 
+                                            title="Eliminar Lote"
+                                          >
+                                            <Trash2 size={13} />
                                           </button>
                                         )}
                                       </div>
