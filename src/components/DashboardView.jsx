@@ -235,13 +235,13 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                     return (
                       <div key={nombreProducto} className="flex flex-col border border-slate-200 rounded-[1.5rem] overflow-hidden bg-white hover:border-[#3D2517]/40 transition-colors">
                         
-                        {/* 🌟 CABECERA RE-ESTILIZADA: DISEÑO ADAPTATIVO SIN SOBREPOSICIÓN */}
+                        {/* 🌟 CABECERA EN ESTRUCTURA VERTICAL (CERO SOBREPOSICIÓN) */}
                         <div 
                           onClick={() => toggleExpandir(nombreProducto)} 
-                          className={`p-4 cursor-pointer transition-colors flex flex-col sm:flex-row sm:items-center justify-between gap-3 ${expandidos[nombreProducto] ? 'bg-[#FDF6F0]' : 'hover:bg-slate-50'}`}
+                          className={`p-4 cursor-pointer transition-colors flex flex-col gap-2.5 ${expandidos[nombreProducto] ? 'bg-[#FDF6F0]' : 'hover:bg-slate-50'}`}
                         >
-                          {/* Bloque Izquierdo: Flecha + Nombre completo */}
-                          <div className="flex items-start gap-3 min-w-0">
+                          {/* Fila Superior: Flecha + Título Completo */}
+                          <div className="flex items-start gap-2.5 w-full min-w-0">
                             {expandidos[nombreProducto] ? (
                               <ChevronUp size={16} className="text-[#D91A3D] flex-shrink-0 mt-0.5" />
                             ) : (
@@ -252,8 +252,8 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                             </span>
                           </div>
                           
-                          {/* Bloque Derecho: Insignias de Enteros / Trozados sin encimarse */}
-                          <div className="flex items-center gap-1.5 flex-wrap flex-shrink-0 self-end sm:self-center ml-7 sm:ml-0">
+                          {/* Fila Inferior: Insignias alineadas a la derecha sin tocar el texto */}
+                          <div className="flex items-center justify-end gap-1.5 flex-wrap w-full pl-6">
                             {lotesFiltrados.length > 0 ? (
                               <>
                                 {enterosCount > 0 && (
