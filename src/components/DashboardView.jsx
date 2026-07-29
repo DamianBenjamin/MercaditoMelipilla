@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from 'react';
-import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2, Inbox, FileText, Table, AlertTriangle, Bell} from 'lucide-react';
+import { Package, Hash, Layers, Trash2, ChevronDown, ChevronUp, Calendar, Scissors, Truck, Clock, Edit2, Inbox, FileText, Table, AlertTriangle, Bell, PieChart, CheckCircle2 } from 'lucide-react';
 import api from '../services/api';
 import NotasInventario from './NotasInventario';
 import { jsPDF } from 'jspdf';
@@ -74,7 +74,7 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
       });
       if (filas.length > 0) {
         autoTable(doc, { startY: 40, head: [columnas], body: filas, theme: 'striped', headStyles: { fillColor: [61, 37, 23] }, styles: { font: "helvetica", fontSize: 10 } });
-      } else { doc.text("No hay productos registrados in el inventario actual.", 14, 50); }
+      } else { doc.text("No hay productos registrados en el inventario actual.", 14, 50); }
       doc.save(`reporte_inventario_${fechaHoy}.pdf`);
     } catch (error) { console.error("Error al generar el PDF:", error); }
   };
@@ -133,12 +133,11 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
                 <div className="flex items-center gap-2.5 overflow-hidden">
                   <AlertTriangle size={16} className={alerta.estado === 'CRÍTICO' ? 'text-red-500' : 'text-amber-500'} />
                   <div className="flex flex-col min-w-0">
-                    <span className="text-xs font-black text-slate-700 truncate">{alerta.productoNombre}</span>
+                    <span className="text-xs font-black text-slate-700 break-words">{alerta.productoNombre}</span>
                     <span className="text-[9px] text-slate-400 uppercase font-bold tracking-wider">{alerta.categoria}</span>
                   </div>
                 </div>
-                {/* 🎨 CORREGIDO: Usando la propiedad correcta alerta.cantidadActual para reflejar la data real */}
-                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black font-mono shadow-inner border ${
+                <span className={`px-2.5 py-1 rounded-lg text-[10px] font-black font-mono shadow-inner border flex-shrink-0 ml-2 ${
                   alerta.estado === 'CRÍTICO' ? 'bg-red-50 text-red-700 border-red-100 animate-pulse' : 'bg-amber-50 text-amber-700 border-amber-100'
                 }`}>
                   {alerta.cantidadActual} {alerta.cantidadActual === 1 ? 'Unidad' : 'Unidades'}
@@ -157,7 +156,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
             <h3 className="text-7xl font-sans font-black text-[#3D2517] tracking-tighter">{reporte.totalGeneral}</h3>
           </div>
           <div className="flex flex-wrap gap-3 items-center w-full sm:w-auto">
-            {/* 🍫 BOTÓN CHOCOLATE: Exportar PDF */}
             <button 
               onClick={exportarPDF} 
               className="flex items-center gap-2 px-5 py-2.5 bg-[#3D2517] hover:bg-black text-white rounded-xl text-xs font-sans font-black uppercase tracking-wider cursor-pointer shadow-md shadow-[#3D2517]/10 transition-all active:scale-95"
@@ -165,7 +163,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
               <FileText size={16} /> Exportar PDF
             </button>
             
-            {/* 🍒 BOTÓN CEREZA: Exportar Excel */}
             <button 
               onClick={exportarExcel} 
               className="flex items-center gap-2 px-5 py-2.5 bg-[#D91A3D] hover:bg-[#b81431] text-white rounded-xl text-xs font-sans font-black uppercase tracking-wider cursor-pointer shadow-md shadow-[#D91A3D]/10 transition-all active:scale-95"
@@ -173,7 +170,6 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
               <Table size={16} /> Exportar Excel
             </button>
             
-            {/* 🍒 ÍCONO INDICADOR EN ROJO CEREZA */}
             <div className="hidden sm:block p-4 bg-[#D91A3D]/5 shadow-inner rounded-2xl border border-[#D91A3D]/10 text-[#D91A3D]">
               <Package size={32} />
             </div>
@@ -190,15 +186,12 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
           const totalCategoria = info ? info.totalCategoria : 0;
 
           return (
-            /* 🎨 MODIFICADO: Tarjeta en blanco puro con borde chocolate sutil */
             <div key={cat} className="bg-white p-7 rounded-[2rem] border border-[#3D2517]/20 shadow-xl shadow-[#3D2517]/5 flex flex-col h-fit">
               <div className="flex justify-between items-center mb-8">
                 <div className="flex items-center gap-3">
-                  {/* 🎨 ICONO CEREZA */}
                   <div className="p-2 bg-[#D91A3D]/10 rounded-xl text-[#D91A3D]">
                     <Layers size={18} />
                   </div>
-                  {/* Tipografía unificada a Sans para hacer juego con el formulario */}
                   <h4 className="text-[#3D2517] font-sans font-black uppercase text-xs tracking-wider">
                     {cat === 'Sandwich' ? '🥪 Sándwiches' : '🍰 Pastelería'}
                   </h4>
@@ -210,89 +203,136 @@ const DashboardView = ({ reporte, onEliminar, onTrozar, actualizarLotesKey, esSo
               
               <div className="space-y-4">
                 {tieneProductos ? (
-                  Object.entries(info.productos).map(([nombreProducto, cantidad]) => (
-                    <div key={nombreProducto} className="flex flex-col border border-slate-200 rounded-[1.5rem] overflow-hidden bg-white hover:border-[#3D2517]/40 transition-colors">
-                      <div onClick={() => toggleExpandir(nombreProducto)} className={`flex justify-between items-center p-4 cursor-pointer transition-colors ${expandidos[nombreProducto] ? 'bg-[#FDF6F0]' : 'hover:bg-slate-50'}`}>
-                        <div className="flex items-center gap-3 overflow-hidden">
-                          {expandidos[nombreProducto] ? <ChevronUp size={16} className="text-[#D91A3D] flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />}
-                          <span className="text-slate-700 text-sm font-bold truncate">{nombreProducto}</span>
-                        </div>
-                        <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm flex-shrink-0">
-                          <Hash size={12} className="text-slate-300" />
-                          <span className="font-bold text-[#3D2517] text-xs">{cantidad}</span>
-                        </div>
-                      </div>
+                  Object.entries(info.productos).map(([nombreProducto, cantidad]) => {
+                    const lotesCargados = detalles[nombreProducto] || [];
+                    const trozadosCount = lotesCargados.filter(i => i.esEntero?.toLowerCase() === 'no').length;
+                    const enterosCount = lotesCargados.filter(i => i.esEntero?.toLowerCase() === 'si').length;
 
-                      {expandidos[nombreProducto] && (
-                        <div className="p-3 bg-slate-50 border-t border-slate-100 space-y-3">
-                          {cargandoDetalle[nombreProducto] ? (
-                            <p className="text-[10px] text-center text-slate-400 uppercase font-black animate-pulse py-4">Cargando...</p>
-                          ) : (
-                            detalles[nombreProducto]?.filter((item) => {
-                              const esAcordeonGrande = nombreProducto.toLowerCase().includes('(grande)');
-                              const esAcordeonMediano = nombreProducto.toLowerCase().includes('(mediano)');
-                              const tamanoItem = item.tamano?.toLowerCase() || '';
-                              if (esAcordeonGrande) return tamanoItem === 'grande';
-                              if (esAcordeonMediano) return tamanoItem === 'mediano';
-                              return true;
-                            }).map((item) => {
-                              const infoTiempo = obtenerDiasTranscurridos(item.fechaElaboracion);
-                              let colorAlerta = "bg-slate-50 text-slate-500 border-slate-200";
-                              if (infoTiempo.dias >= 4) { colorAlerta = "bg-red-50 text-red-700 border-red-200 animate-pulse font-extrabold"; }
-                              else if (infoTiempo.dias >= 2) { colorAlerta = "bg-amber-50 text-amber-800 border-amber-200"; }
+                    return (
+                      <div key={nombreProducto} className="flex flex-col border border-slate-200 rounded-[1.5rem] overflow-hidden bg-white hover:border-[#3D2517]/40 transition-colors">
+                        {/* CABECERA ACORDEÓN: MOSTRAR TEXTO COMPLETO Y CONTEO DE ENTEROS/TROZADOS */}
+                        <div onClick={() => toggleExpandir(nombreProducto)} className={`flex justify-between items-center p-4 cursor-pointer transition-colors ${expandidos[nombreProducto] ? 'bg-[#FDF6F0]' : 'hover:bg-slate-50'}`}>
+                          <div className="flex items-center gap-3 pr-2">
+                            {expandidos[nombreProducto] ? <ChevronUp size={16} className="text-[#D91A3D] flex-shrink-0" /> : <ChevronDown size={16} className="text-slate-400 flex-shrink-0" />}
+                            {/* 💡 MEJORA 1: Eliminada la clase truncate para permitir ver el nombre completo */}
+                            <span className="text-slate-800 text-sm font-bold leading-tight break-words">{nombreProducto}</span>
+                          </div>
+                          
+                          <div className="flex items-center gap-2 flex-shrink-0">
+                            {/* 💡 MEJORA 2: Resumen rápido de Enteros vs Trozados en la cabecera si están cargados los lotes */}
+                            {expandidos[nombreProducto] && lotesCargados.length > 0 && trozadosCount > 0 && (
+                              <div className="hidden sm:flex items-center gap-1 text-[9px] font-black uppercase">
+                                {enterosCount > 0 && <span className="bg-green-100 text-green-800 px-2 py-0.5 rounded-md">{enterosCount} Ent</span>}
+                                <span className="bg-amber-100 text-amber-800 px-2 py-0.5 rounded-md">{trozadosCount} Troz</span>
+                              </div>
+                            )}
 
-                              return (
-                                <div key={item.id} className="flex flex-col gap-3 bg-white p-4 rounded-2xl border border-slate-200 shadow-sm">
-                                  <div className="space-y-2">
-                                    <div className="flex justify-between items-center">
-                                      <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
-                                        <Calendar size={14} className="text-[#D91A3D]/70 flex-shrink-0" />
-                                        <span className="text-slate-400 w-8">Elab:</span> <span className="text-slate-800">{item.fechaElaboracion}</span>
+                            <div className="flex items-center gap-1.5 bg-white px-3 py-1.5 rounded-xl border border-slate-200 shadow-sm">
+                              <Hash size={12} className="text-slate-300" />
+                              <span className="font-bold text-[#3D2517] text-xs">{cantidad}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* DESPLEGABLE DE LOTES DETALLADOS */}
+                        {expandidos[nombreProducto] && (
+                          <div className="p-3 bg-slate-50 border-t border-slate-100 space-y-3">
+                            {cargandoDetalle[nombreProducto] ? (
+                              <p className="text-[10px] text-center text-slate-400 uppercase font-black animate-pulse py-4">Cargando lotes...</p>
+                            ) : (
+                              detalles[nombreProducto]?.filter((item) => {
+                                const esAcordeonGrande = nombreProducto.toLowerCase().includes('(grande)');
+                                const esAcordeonMediano = nombreProducto.toLowerCase().includes('(mediano)');
+                                const tamanoItem = item.tamano?.toLowerCase() || '';
+                                if (esAcordeonGrande) return tamanoItem === 'grande';
+                                if (esAcordeonMediano) return tamanoItem === 'mediano';
+                                return true;
+                              }).map((item) => {
+                                const infoTiempo = obtenerDiasTranscurridos(item.fechaElaboracion);
+                                let colorAlerta = "bg-slate-50 text-slate-500 border-slate-200";
+                                if (infoTiempo.dias >= 4) { colorAlerta = "bg-red-50 text-red-700 border-red-200 animate-pulse font-extrabold"; }
+                                else if (infoTiempo.dias >= 2) { colorAlerta = "bg-amber-50 text-amber-800 border-amber-200"; }
+
+                                const esTrozado = item.esEntero?.toLowerCase() === 'no';
+
+                                return (
+                                  <div key={item.id} className={`flex flex-col gap-3 p-4 rounded-2xl border shadow-sm transition-all ${
+                                    esTrozado ? 'bg-amber-50/40 border-amber-200' : 'bg-white border-slate-200'
+                                  }`}>
+                                    {/* 💡 MEJORA 3: Etiqueta de Estado Clarísima (Entero vs Trozado) */}
+                                    <div className="flex justify-between items-center border-b border-slate-100 pb-2">
+                                      <div className="flex items-center gap-1.5">
+                                        {esTrozado ? (
+                                          <span className="flex items-center gap-1 text-[9px] font-black uppercase bg-amber-100 text-amber-800 border border-amber-300 px-2 py-0.5 rounded-md">
+                                            <Scissors size={10} /> Trozado ({item.stockTrozos} porciones)
+                                          </span>
+                                        ) : (
+                                          <span className="flex items-center gap-1 text-[9px] font-black uppercase bg-emerald-50 text-emerald-700 border border-emerald-200 px-2 py-0.5 rounded-md">
+                                            <CheckCircle2 size={10} /> Pieza Entera
+                                          </span>
+                                        )}
                                       </div>
-                                      <div className={`flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-md border uppercase tracking-wider ${colorAlerta}`}>
-                                        <Clock size={10} /> {infoTiempo.texto}
-                                      </div>
+                                      <span className="text-[9px] text-slate-400 font-mono bg-white px-2 py-0.5 rounded border border-slate-100">ID: {item.id}</span>
                                     </div>
-                                    <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
-                                      <Truck size={14} className="text-blue-400 flex-shrink-0" />
-                                      <span className="text-slate-400 w-8">Lleg:</span> <span className="text-slate-800">{item.fechaLlegada}</span>
-                                    </div>
-                                    {item.esEntero?.toLowerCase() === 'no' && (
-                                      <div className="mt-2 flex items-center justify-between bg-[#FDF6F0] border border-[#3D2517]/20 px-3 py-2 rounded-xl">
-                                        <div className="text-[10px] font-black text-[#3D2517] uppercase flex items-center gap-1.5">
-                                          <span>Porciones Quedan:</span> <span className="text-xs bg-white text-slate-800 px-2 py-0.5 rounded border border-slate-200 font-mono font-bold">{item.stockTrozos}</span>
+
+                                    {/* FECHAS DE ELABORACIÓN Y LLEGADA */}
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between items-center">
+                                        <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
+                                          <Calendar size={14} className="text-[#D91A3D]/70 flex-shrink-0" />
+                                          <span className="text-slate-400 w-8">Elab:</span> <span className="text-slate-800">{item.fechaElaboracion}</span>
                                         </div>
+                                        <div className={`flex items-center gap-1 text-[8px] px-2 py-0.5 rounded-md border uppercase tracking-wider ${colorAlerta}`}>
+                                          <Clock size={10} /> {infoTiempo.texto}
+                                        </div>
+                                      </div>
+                                      
+                                      <div className="flex items-center gap-3 text-[10px] font-bold text-slate-600 uppercase">
+                                        <Truck size={14} className="text-blue-400 flex-shrink-0" />
+                                        <span className="text-slate-400 w-8">Lleg:</span> <span className="text-slate-800">{item.fechaLlegada}</span>
+                                      </div>
+
+                                      {/* PANEL DE CONTROL DE PORCIONES TROZADAS */}
+                                      {esTrozado && (
+                                        <div className="mt-2 flex items-center justify-between bg-white border border-amber-200 px-3 py-2 rounded-xl shadow-xs">
+                                          <div className="text-[10px] font-black text-[#3D2517] uppercase flex items-center gap-1.5">
+                                            <PieChart size={12} className="text-amber-600" />
+                                            <span>Porciones Quedan:</span> 
+                                            <span className="text-xs bg-amber-100 text-amber-900 px-2 py-0.5 rounded border border-amber-300 font-mono font-bold">{item.stockTrozos}</span>
+                                          </div>
+                                          {!esSoloLectura && (
+                                            <button onClick={(e) => { e.stopPropagation(); ajustarCantidadTrozos(item, nombreProducto); }} className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 text-[#3D2517] border border-slate-200 rounded-lg text-[9px] font-black uppercase shadow-sm transition-all cursor-pointer">
+                                              <Edit2 size={10} /> Modificar
+                                            </button>
+                                          )}
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* BOTONES DE ACCIÓN (TROZAR / ELIMINAR) */}
+                                    <div className="flex items-center justify-end border-t border-slate-100 pt-2.5 mt-1">
+                                      <div className="flex gap-2 items-center">
+                                        {!esSoloLectura && !cat.toLowerCase().includes('sandwich') && !esTrozado && (
+                                          <button onClick={async (e) => { e.stopPropagation(); await onTrozar(item.id); }} className="p-2 bg-white hover:bg-[#FDF6F0] text-[#3D2517] border border-slate-200 rounded-xl transition-colors flex items-center gap-1.5 cursor-pointer shadow-xs">
+                                            <Scissors size={14} className="text-[#D91A3D]" /> <span className="text-[9px] font-black uppercase">Trozar Pieza</span>
+                                          </button>
+                                        )}
                                         {!esSoloLectura && (
-                                          <button onClick={(e) => { e.stopPropagation(); ajustarCantidadTrozos(item, nombreProducto); }} className="flex items-center gap-1 px-2.5 py-1 bg-white hover:bg-slate-100 text-[#3D2517] border border-slate-200 rounded-lg text-[9px] font-black uppercase shadow-sm transition-all cursor-pointer">
-                                            <Edit2 size={10} /> Modificar
+                                          <button onClick={async (e) => { e.stopPropagation(); await onEliminar(nombreProducto, cat, item.id); }} className="p-2 text-slate-300 hover:text-[#D91A3D] hover:bg-[#FCEAEB] rounded-xl transition-colors cursor-pointer" title="Eliminar Lote">
+                                            <Trash2 size={14} />
                                           </button>
                                         )}
                                       </div>
-                                    )}
-                                  </div>
-                                  <div className="flex items-center justify-between border-t border-slate-100 pt-3 mt-1">
-                                    <span className="text-[9px] text-slate-400 font-mono bg-slate-50 px-2 py-0.5 rounded">ID: {item.id}</span>
-                                    <div className="flex gap-2 items-center">
-                                      {!esSoloLectura && !cat.toLowerCase().includes('sandwich') && item.esEntero?.toLowerCase() === 'si' && (
-                                        <button onClick={async (e) => { e.stopPropagation(); const porcionesCreadas = await onTrozar(item.id); if (porcionesCreadas) { cargarCatalogo(); } }} className="p-2 text-[#3D2517] hover:bg-slate-50 border border-slate-200 rounded-xl transition-colors flex items-center gap-1 cursor-pointer">
-                                          <Scissors size={14} /> <span className="text-[9px] font-black uppercase">Trozar</span>
-                                        </button>
-                                      )}
-                                      {!esSoloLectura && (
-                                        <button onClick={async (e) => { e.stopPropagation(); await onEliminar(nombreProducto, cat, item.id); }} className="p-2 text-slate-300 hover:text-[#D91A3D] hover:bg-[#FCEAEB] rounded-xl transition-colors cursor-pointer">
-                                          <Trash2 size={14} />
-                                        </button>
-                                      )}
                                     </div>
                                   </div>
-                                </div>
-                              );
-                            })
-                          )}
-                        </div>
-                      )}
-                    </div>
-                  ))
+                                );
+                              })
+                            )}
+                          </div>
+                        )}
+                      </div>
+                    );
+                  })
                 ) : (
                   <div className="flex flex-col items-center justify-center py-8 px-4 border border-dashed border-slate-200 rounded-2xl bg-slate-50 text-slate-400">
                     <Inbox size={24} className="text-slate-300 mb-2" />

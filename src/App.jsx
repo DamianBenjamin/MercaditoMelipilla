@@ -120,7 +120,6 @@ function App() {
       }
       
       await fetchReporte(); 
-      // 👇 SOLUCIÓN APLICADA: Fuerza a los componentes visuales a recargarse de inmediato
       setActualizarLotesKey(prev => prev + 1); 
       setMensaje({ texto: "Inventario actualizado correctamente.", tipo: "success" });
       return true; 
@@ -133,16 +132,15 @@ function App() {
     }
   };
 
+  // 🗓️ CÁLCULO DINÁMICO DE RANGOS TEMPORALES (MÁXIMO 7 DÍAS ATRÁS Y BLOQUEO DE FUTURO)
   const hoy = new Date();
-  
-  // Límite Máximo: El día de hoy (impide seleccionar fechas futuras)
   const fechaMaxInmueble = hoy.toISOString().split('T')[0];
   
-  // Límite Mínimo: Hace 7 días exactos
   const haceSieteDias = new Date();
   haceSieteDias.setDate(hoy.getDate() - 7);
   const fechaMinInmueble = haceSieteDias.toISOString().split('T')[0];
 
+  // 🍰 FLUJO DE TROZADO BLINDADO Y REACTIVO
   const handleTrozar = async (id) => {
     if (!sesion || sesion.rol !== 'ROLE_VENTAS') {
       alert("Acceso denegado: La fábrica de pasteles no registra trozados en vitrina.");
@@ -150,43 +148,35 @@ function App() {
     }
 
     const MAX_TROZOS = 7;
-    let cantidadIngresada = "";
-    let totalTrozos = 0;
-    let esValido = false;
+    const cantidadIngresada = window.prompt(`¿En cuántas porciones se dividirá este pastel? (Máximo permitido: ${MAX_TROZOS} trozos):`);
+    
+    // Si el usuario cancela el cuadro de diálogo, cerramos el flujo limpiamente
+    if (cantidadIngresada === null) return false; 
 
-    // Bucle de validación interactiva en el cliente
-    while (!esValido) {
-      cantidadIngresada = window.prompt(`¿En cuántas porciones se dividirá este pastel? (Máximo permitido: ${MAX_TROZOS} trozos):`);
-      
-      // Si el usuario presiona "Cancelar", abortamos el flujo limpiamente
-      if (cantidadIngresada === null) return false; 
+    const totalTrozos = parseInt(cantidadIngresada);
 
-      totalTrozos = parseInt(cantidadIngresada);
+    // Validación de número válido
+    if (isNaN(totalTrozos) || totalTrozos <= 0) {
+      alert("Por favor, ingresa un número de trozos válido y mayor a 0.");
+      return false;
+    }
 
-      // Validación 1: Verificar que sea un número entero mayor que cero
-      if (isNaN(totalTrozos) || totalTrozos <= 0) {
-        alert("Por favor, ingresa un número de trozos válido y mayor a 0.");
-        continue; // Reinicia el prompt
-      }
-
-      // Validación 2: Control estricto del límite máximo normativo (Máximo 7)
-      if (totalTrozos > MAX_TROZOS) {
-        alert(`Error Operacional: No se permite fraccionar en ${totalTrozos} porciones. El estándar máximo de la pastelería es de ${MAX_TROZOS} trozos.`);
-        continue; // Reinicia el prompt obligando a poner un número menor o igual a 7
-      }
-
-      // Si supera ambos filtros, el dato es seguro y rompemos el bucle
-      esValido = true;
+    // Validación estricta del techo operativo de 7 porciones
+    if (totalTrozos > MAX_TROZOS) {
+      alert(`Error Operacional: No se permite fraccionar en ${totalTrozos} porciones. El estándar máximo de la pastelería es de ${MAX_TROZOS} trozos.`);
+      return false;
     }
 
     try {
+      // Envío de la transacción directa a Render
       await api.put(`/api/productos/${id}/productoEnteroTrozar`, null, {
         params: { trozos: totalTrozos }
       });
 
+      // Sincronización e inyección reactiva instantánea en el Dashboard de Vercel
       await fetchReporte();
-      // 👇 SOLUCIÓN APLICADA: Dispara la reactividad instantánea en el Dashboard
       setActualizarLotesKey(prev => prev + 1); 
+      
       setMensaje({ texto: `¡Producto trozado en ${totalTrozos} porciones con éxito!`, tipo: "success" });
       return totalTrozos; 
     } catch (err) {
@@ -217,13 +207,10 @@ function App() {
       <nav className="bg-[#FAF0E6] border-b-4 border-[#3D2517] p-4 mb-10 shadow-md">
         <div className="max-w-[1400px] mx-auto flex flex-col md:flex-row justify-between items-center gap-4">
           
-          {/* 🎨 DISEÑO UNIFICADO AL ESTILO DE LOS FORMULARIOS */}
           <div className="bg-[#FAF0E6] border-2 border-[#3D2517] px-6 py-2 shadow-inner text-center font-sans relative overflow-hidden flex flex-col items-center rounded-xl">
-            {/* Banner superior que imita las cintas del cartel real */}
             <div className="flex items-center gap-2 text-xs font-black tracking-widest text-white bg-[#3D2517] px-4 py-0.5 uppercase rounded">
               <span>—</span> MERCADITO <span>—</span>
             </div>
-            {/* Texto principal con tipografía Sans idéntica a los formularios */}
             <h1 className="text-2xl font-black tracking-tighter text-[#3D2517] mt-1.5 uppercase">
               DULCINEA
             </h1>
